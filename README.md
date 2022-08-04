@@ -1,2 +1,0 @@
-# AutoPublicationCollection
-for internship
