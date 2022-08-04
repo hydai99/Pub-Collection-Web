@@ -5,13 +5,13 @@ import pandas as pd
 import datetime
 import datacompy
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from os.path import exists as file_exists
 
 st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 
 st.header('Biohub publication search result.')
 st.subheader('Hongyu Dai: Summer internship project')
 
-# pip install streamlit-aggrid
 # streamlit run demo2.py --global.dataFrameSerialization="legacy"
 
 
@@ -21,21 +21,25 @@ st.subheader('Hongyu Dai: Summer internship project')
 base = pd.read_csv('basedb.csv', encoding='utf-8-sig')
 base.fillna('', inplace=True)
 
-#.set_index('record id', inplace=True) #test
+dailyresult = datetime.datetime.today().strftime('%Y-%m-%d') + '_4searchresult.csv'
+if file_exists('Daily Output\\'+dailyresult):
+    new = pd.read_csv('Daily Output\\'+dailyresult, encoding='utf-8-sig')
+    new.fillna('', inplace=True)
 
-try:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-except:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-new = af.Bibliometrics_Collect(start)
-#.set_index('record id', inplace=True) #test
+else:
+    try:
+        start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=5)).strftime('%Y-%m-%d')
+    except:
+        start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=5)).strftime('%Y-%m-%d')
+    new = af.Bibliometrics_Collect(start)
+
 
 ##### update database
 # only check row post after start date
 fstart=datetime.datetime.strptime(start, '%Y-%m-%d').strftime('%m/%d/%Y')
 
-base_check = base[(base['epost date'] >= fstart) |
-                  (base['publish date'] >= fstart )]
+#base_check = base[(base['epost date'] >= fstart) | (base['publish date'] >= fstart )]
+base_check = base[(base['save datetime'] >= fstart)]
 
 
 ### delete db
@@ -112,11 +116,14 @@ allchangedb_old= pd.read_csv( 'changedb old.csv', encoding='utf-8-sig')
 allchangedb_new= pd.read_csv('changedb new.csv' , encoding='utf-8-sig')
 #alldeletedb= pd.read_csv('deletedb.csv' , encoding='utf-8-sig')
 
+pub_pre=base[base['match result']!='']
+pub_pre.to_csv('match pub-pre.csv', encoding='utf-8-sig')
+
 
 ### 1. table selection
 table_option = st.selectbox(
     'Which table you would like to check?',
-    ('base', 'changedb (old version)', 'changedb (new version)')) #, 'deletedb'
+    ('base', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint'))  # , 'deletedb'
 
 #@st.cache
 if table_option == 'base':
@@ -125,6 +132,8 @@ if table_option == 'changedb (old version)':
     df = allchangedb_old
 if table_option == 'changedb (new version)':
     df = allchangedb_new
+if table_option == 'matched pub-preprint':
+    df = pub_pre
 #if table_option == 'deletedb':
     #df = alldeletedb
 
@@ -166,7 +175,7 @@ gb.configure_columns(column_names=df.columns, maxWidth=200)  # column_names=[]
 gb.configure_selection(selection_mode='multiple', use_checkbox=True)
 grid_options = gb.build()
 grid_table = AgGrid(df, grid_options, update_mode=GridUpdateMode.SELECTION_CHANGED,
-                    enable_enterprise_modules=True, allow_unsafe_jscode=True)  # , width=20 use old version?
+                    enable_enterprise_modules=True)  # , width=20 use old version?  #, allow_unsafe_jscode=True
 #new_df = grid_table['data']  # dataframe with after edit value
 
 
