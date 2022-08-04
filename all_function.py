@@ -382,8 +382,8 @@ def Bibliometrics_Collect(start,
     df.fillna('', inplace=True)
     df.rename(columns=lambda x: x.lower(), inplace=True)
 
-    filename = datetime.datetime.today().strftime('%Y-%m-%d')+'_4SearchResult.csv'
-    df.to_csv('Daily Output\\'+filename,index=False ,encoding='utf-8-sig')
+    filename = datetime.datetime.today().strftime('%Y-%m-%d')+'_4searchresult.csv'
+    df.to_csv('daily output\\'+filename,index=False ,encoding='utf-8-sig')
     print('Fetch done.')
     return(df)
 

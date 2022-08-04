@@ -18,7 +18,7 @@ st.subheader('Hongyu Dai: Summer internship project')
 #########################
 ##### load database
 
-base = pd.read_csv('baseDB.csv', encoding='utf-8-sig')
+base = pd.read_csv('basedb.csv', encoding='utf-8-sig')
 base.fillna('', inplace=True)
 
 #.set_index('record id', inplace=True) #test
@@ -63,9 +63,9 @@ base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
     by=['record id']).reset_index(drop=True)
 
 # save db
-changedb_old.to_csv('changeDB old.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-changedb_new.to_csv('changeDB new.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-#deletedb.to_csv('deleteDB.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
+changedb_old.to_csv('changedb old.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+changedb_new.to_csv('changedb new.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+#deletedb.to_csv('deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
 
 
 #########################
@@ -103,7 +103,7 @@ for i in publication.index:
 
 base = pd.concat([publication, preprint]).sort_values(
     by=['record id']).drop(columns=['simTitles', 'sameFirstAuthor'])
-base.to_csv('baseDB.csv', index=False, encoding='utf-8-sig')
+base.to_csv('basedb.csv', index=False, encoding='utf-8-sig')
 
 
 #########################
