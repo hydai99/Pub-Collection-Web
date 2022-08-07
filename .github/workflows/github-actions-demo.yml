@@ -22,3 +22,11 @@ jobs:
       - name: execute py script # run the run.py to get the latest data
         run: |
           python backend.py
+
+      - name: Setup GIT user
+        uses: fregante/setup-git-user@v1
+      - name: Push done work
+        run: |
+          git add --all
+          git commit -m "Aut deployment @ $(date '+%Y-%m-%d %H:%M:%S')"
+          git push --force origin main
