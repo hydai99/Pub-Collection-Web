@@ -383,7 +383,7 @@ def Bibliometrics_Collect(start,
     df.rename(columns=lambda x: x.lower(), inplace=True)
 
     filename = datetime.datetime.today().strftime('%Y-%m-%d')+'_4searchresult.csv'
-    df.to_csv('daily output\\'+filename,index=False ,encoding='utf-8-sig')
+    df.to_csv('daily output/'+filename,index=False ,encoding='utf-8-sig')
     print('Fetch done.')
     return(df)
 
