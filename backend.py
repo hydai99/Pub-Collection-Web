@@ -4,9 +4,9 @@ import datetime
 import datacompy
 from os.path import exists as file_exists
 
-    """_summary_
-    This file contain data process: update, compare, match pre-pub
-    """
+"""
+This file contain data process: update, compare, match pre-pub
+"""
 
 #########################
 ##### load database
