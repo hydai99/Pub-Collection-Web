@@ -19,8 +19,8 @@ except:
     start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=5)).strftime('%Y-%m-%d')
 
 dailyresult = datetime.datetime.today().strftime('%Y-%m-%d') + '_4searchresult.csv'
-if file_exists('/Daily Output/'+dailyresult):
-    new = pd.read_csv('/Daily Output/'+dailyresult, encoding='utf-8-sig')
+if file_exists('daily output/'+dailyresult):
+    new = pd.read_csv('daily output/'+dailyresult, encoding='utf-8-sig')
     new.fillna('', inplace=True)
 else:
     new = af.Bibliometrics_Collect(start)
