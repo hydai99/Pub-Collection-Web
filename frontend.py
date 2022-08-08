@@ -1,32 +1,22 @@
-import all_function as af
-import streamlit as st
+# streamlit run frontend.py --global.dataFrameSerialization="legacy"
+
 import pandas as pd
+import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
-
 st.header('Biohub publication search result.')
-st.subheader('Hongyu Dai: Summer internship project')
 
-# streamlit run app.py --global.dataFrameSerialization="legacy"
+##### 0. load data
+base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
+allchangedb_old= pd.read_csv( 'database/changedb (old version).csv', encoding='utf-8-sig')
+allchangedb_new= pd.read_csv('database/changedb (new version).csv' , encoding='utf-8-sig')
+alldeletedb= pd.read_csv('database/deletedb.csv' , encoding='utf-8-sig')
+pub_pre= pd.read_csv('database/match pub-preprint.csv',encoding='utf-8-sig')
 
-
-######################### create website
-##### load data
-base=pd.read_csv( 'base.csv', encoding='utf-8-sig')
-allchangedb_old= pd.read_csv( 'changedb old.csv', encoding='utf-8-sig')
-allchangedb_new= pd.read_csv('changedb new.csv' , encoding='utf-8-sig')
-alldeletedb= pd.read_csv('deletedb.csv' , encoding='utf-8-sig')
-pub_pre= pd.read_csv('match pub-pre.csv',encoding='utf-8-sig')
-
-
-### 1. table selection
-table_option = st.selectbox(
-    'Which table you would like to check?',
-    ('base', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb')) 
-
+##### 1. table selection
 def table_select(table_option):
-    if table_option == 'base':
+    if table_option == 'basedb':
         df = base
     if table_option == 'changedb (old version)':
         df = allchangedb_old
@@ -39,26 +29,30 @@ def table_select(table_option):
     df.fillna('', inplace=True)
     return df
 
-df=table_select(table_option)
-df_ori=df.copy()
-
-#### format selection
-format_select = st.radio(
+left,right=st.columns(2)
+with left:
+    table_option = st.selectbox(
+        'Which table you would like to check?',
+        ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb')) 
+with right:
+    #### format selection
+    format_select = st.radio(
     "What's table format you want?",
     ('short format','full text'))
 
-#### add search bar
-search = st.text_input('Enter search words:')
-
-if search:
-    ind = []
-    for i in df.columns:
-        ind += list(df.loc[df[i].astype(str).str.contains(search)].index)
-    df = df.iloc[list(set(ind)), :]
-else:
-    df=df_ori
+df=table_select(table_option)
 
 
+col1, col2 = st.columns(2) #[3, 1]
+with col1:
+    #### add search bar
+    search = st.text_input('Enter search words:').lower()
+with col2:
+    #### edit button
+    st.write('If you confirm to edit data, click button below.')
+    edit=st.button('Confirm edit!')
+
+#####
 gb = GridOptionsBuilder.from_dataframe(df)
 if format_select == 'short format':
     gb.configure_default_column(editable=True, groupable=True, wrapText=True, enableRowGroup=True,
@@ -71,10 +65,21 @@ if format_select == 'full text':
 
 gb.configure_columns(column_names=df.columns, maxWidth=200)  # column_names=[]
 gb.configure_selection(selection_mode='multiple', use_checkbox=True)
+#gb.configure_pagination(enabled=True, paginationAutoPageSize=True, paginationPageSize=10)
 grid_options = gb.build()
 grid_table = AgGrid(df, grid_options, update_mode=GridUpdateMode.SELECTION_CHANGED,
-                    enable_enterprise_modules=True)  # , width=20 use old version?  #, allow_unsafe_jscode=True
-#new_df = grid_table['data']  # dataframe with after edit value
+                    enable_enterprise_modules=True)  #  width=20 use old version?  #, allow_unsafe_jscode=True
+
+####
+reload_data = False
+if search:
+    ind = []
+    for i in df.columns:
+        ind += list(df.loc[df[i].astype(str).str.lower().str.contains(search)].index)
+    df = df.iloc[list(set(ind)), :]
+    reload_data = True
+
+
 
 
 #### 2) compare & detail function

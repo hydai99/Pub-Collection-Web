@@ -1,20 +1,13 @@
-import streamlit as st
 import datetime
 import numpy as np
 import pandas as pd
 import time
-import math
-import sys
-import string
-import gc
 import requests
 import re
 from bs4 import BeautifulSoup as bs
-import os
-import datacompy
 import distance, re
 from unidecode import unidecode
-### 把date的格式全换成%m/%d/%Y
+
 
 # 1 Bio & Medrxiv
 def BioMedrxiv_Search(start_date,end_date,keyword):
@@ -95,6 +88,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			all_authors = []
 			for author in authors:
 				all_authors.append(author.text)
+			time.sleep(.5)
 			author_list += [all_authors]
 
 		if (page+1)*num_page_results >= int(num_results_text):
@@ -122,10 +116,10 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			articles2 = bs(requests.post(paper_url).text, features='html.parser')
 			full_records_df.loc[row_number, 'all affiliations'] = ("; ".join([i.get_text() for i in articles2.find_all('span', 'nlm-institution')]))
 			#full_records_df.loc[row_number,'affiliations list']= ("; ".join(set([i.get_text() for i in articles2.find_all('span', 'nlm-institution')])))
-			#full_records_df.loc[row_number,'Epost date'] = articles2.select('div.panel-pane.pane-custom.pane-1 > div')[0].get_text().split('\xa0')[1][:-3]
-			full_records_df.loc[row_number,'Epost date'] = datetime.datetime.strptime(articles2.select('div.panel-pane.pane-custom.pane-1 > div')[0].get_text().split('\xa0')[1][:-3], '%B %d, %Y').strftime('%m/%d/%Y')
+			#full_records_df.loc[row_number,'epost date'] = articles2.select('div.panel-pane.pane-custom.pane-1 > div')[0].get_text().split('\xa0')[1][:-3]
+			full_records_df.loc[row_number,'epost date'] = datetime.datetime.strptime(articles2.select('div.panel-pane.pane-custom.pane-1 > div')[0].get_text().split('\xa0')[1][:-3], '%B %d, %Y').strftime('%m/%d/%Y')
 			full_records_df.loc[row_number,'abstract'] = articles2.find('div', attrs={'class': 'section abstract'}).text.replace('Abstract', '').replace('ABSTRACT', '').replace('\n', '')
-		
+			time.sleep(.5)
 		for i,aff in enumerate(full_records_df['all affiliations']):
 			all=[]
 			if aff=='':
@@ -138,7 +132,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			lambda x: x if ';' not in str(x) else '; '.join(sorted(set(y.strip() for y in (x.split(';'))))))  # if x=='' else x
 		full_records_df.loc[:,'save datetime'] = datetime.datetime.now().strftime('%m/%d/%Y') # when we save it
 		full_records_df.loc[:, 'journal'] = full_records_df.loc[:, 'url'].apply(lambda x: x[x.rfind('rxiv')-3:x.rfind('rxiv')+4])
-		#full_records_df.loc[:, 'Epost date']=full_records_df.loc[:, 'Epost date'].apply(lambda x: datetime.datetime.strptime(x, '%B %d, %Y').strftime('%m/%d/%Y'))
+		#full_records_df.loc[:, 'epost date']=full_records_df.loc[:, 'epost date'].apply(lambda x: datetime.datetime.strptime(x, '%B %d, %Y').strftime('%m/%d/%Y'))
 		full_records_df.loc[:, 'version']=full_records_df.loc[:, 'version'].apply(lambda x: x.split(';')[1])
 
 	## keep user informed on task ended about record number
@@ -147,7 +141,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 	return(full_records_df)
 
 # 2 arxiv
-def Arxiv_Search(start_date,end_date,keyword):
+def Arxiv_Search(start_date,keyword):
     # initialize number of pages to loop through
     page=0
     num_page_results = 10
@@ -168,6 +162,7 @@ def Arxiv_Search(start_date,end_date,keyword):
     abstract=[]
     pdf_url=[]
     #id=[]
+    start_date=datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%m/%d/%Y')
 
     ### once the string has been built, access site
     ## loop through other pages of search if they exist
@@ -208,6 +203,7 @@ def Arxiv_Search(start_date,end_date,keyword):
 
         if (page+1)*num_page_results >= int(num_results_text) or stop=='Yes' :
             break
+        time.sleep(1)
         page += 1
 
     for paper_url in url:
@@ -218,9 +214,9 @@ def Arxiv_Search(start_date,end_date,keyword):
             doi += [article2.find('meta', attrs={'name': 'citation_doi'})['content']]
             version += [article2.find_all('span', attrs={'class': 'arxivid'})[-1].text.replace('\n','').split(' ')[0]]
             author_list += [article2.find('div', attrs={'class': 'authors'}).text.replace('Authors:','')]
-
+            time.sleep(.5)
     full_records_df = pd.DataFrame(np.column_stack([title, Epost_date,url,abstract,pdf_url,doi,version,author_list]),
-                    columns=['title', 'Epost date', 'url','abstract','pdf url','doi','version','author list'] )
+                    columns=['title', 'epost date', 'url','abstract','pdf url','doi','version','author list'] )
 
     if len(full_records_df) !=  0:
         full_records_df.loc[:,'save datetime'] = datetime.datetime.now().strftime('%m/%d/%Y') # when we save it
@@ -290,22 +286,28 @@ def Pubmed_search(start_date, end_date, keyword):
             title += [article.find('h1',attrs={'class': 'heading-title'}).text.replace('\n','').strip()]
 
             if article.find('span', attrs={'class': 'secondary-date'}):
-                ori_date1 = article.find('span', attrs={'class': 'secondary-date'}).text.replace('\n', '').replace(
+                ori_date1 = article.find('span', attrs={'class': 'secondary-date'}).text.replace('\n', '').replace('eCollection','').replace(
                     'Epub ', '').replace('Print ','').strip().strip('.')  # change format: now "Epub 2022 Jun 23."
                 try:
                     ori_date1= datetime.datetime.strptime(ori_date1, '%Y %b %d').strftime('%m/%d/%Y')
                 except:
-                    ori_date1= datetime.datetime.strptime(ori_date1, '%Y %b').strftime('%Y-%m')
+                    try:
+                        ori_date1= datetime.datetime.strptime(ori_date1, '%Y %b').strftime('%m/%Y')
+                    except:
+                        pass
             else:
                 ori_date1=''
             Epost_date += [ori_date1]
 
             if article.find('span', attrs={'class': 'cit'}):
-                ori_date2= article.find('span', attrs={'class': 'cit'}).text.strip('.').split(';')[0]
+                ori_date2= article.find('span', attrs={'class': 'cit'}).text.replace('eCollection','').strip('.').split(';')[0]
                 try:
                     ori_date2= datetime.datetime.strptime(ori_date2, '%Y %b %d').strftime('%m/%d/%Y')
                 except:
-                    ori_date2= datetime.datetime.strptime(ori_date2, '%Y %b').strftime('%Y-%m')
+                    try:
+                        ori_date2= datetime.datetime.strptime(ori_date2, '%Y %b').strftime('%m/%Y')
+                    except:
+                        pass
             else:
                 ori_date2=''
             publish_date += [ori_date2]
@@ -329,10 +331,11 @@ def Pubmed_search(start_date, end_date, keyword):
 
         if page*num_page_results >= int(num_results_text):
             break
+        time.sleep(1)
         page += 1
 
     full_records_df = pd.DataFrame(np.column_stack([title,Epost_date,publish_date,url,pmid,abstract,doi,author_list,journal,article_source,affiliations_list]),
-                        columns=['title', 'Epost date','publish date', 'url','PMID','abstract','doi','author list','journal','article_source','affiliations list'] )
+                        columns=['title', 'epost date','publish date', 'url','PMID','abstract','doi','author list','journal','article_source','affiliations list'] )
 
     if len(full_records_df) !=  0:
         full_records_df.loc[:,'save datetime'] = datetime.datetime.now().strftime('%m/%d/%Y') # when we save it
@@ -345,7 +348,6 @@ def Pubmed_search(start_date, end_date, keyword):
 
 ## 4: combine above 3 
 # pre: create a folder to save everyday search result
-@st.cache
 def Bibliometrics_Collect(start,
                             end=(datetime.date.today() -
                                 datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -359,25 +361,28 @@ def Bibliometrics_Collect(start,
     """
 
     df1 = BioMedrxiv_Search(start_date=start, end_date=end, keyword=Keyword)
-    df2 = Arxiv_Search(start_date=start, end_date=end, keyword=Keyword)
+    df2 = Arxiv_Search(start_date=start, keyword=Keyword)
     df3 = Pubmed_search(start_date=start, end_date=end, keyword=Keyword)
 
     df = pd.concat([df1, df2, df3])
     df['record change number'] = 0
-    df.insert(0, 'record id', np.arange(1, len(df)+1))
-    #df.index = np.arange(1, len(df)+1)
-    #df.index.name = 'record id'
 
+    df['epost date2'] = pd.to_datetime(df['epost date'])
+    df['publish date2'] = pd.to_datetime(df['publish date'])
+    df.reset_index(drop=True,inplace=True)
+    df['newer date'] = [df.loc[i, 'epost date2'] if ( pd.isnull(df.loc[i, 'publish date'])==True or df.loc[i, 'epost date2'] >= df.loc[i, 'publish date2']) else df.loc[i, 'publish date2'] for i in range(len(df))]
+    df = df.sort_values(by=['newer date'], ascending=True).drop(
+        columns=['epost date2', 'publish date2'])
+
+    df.insert(0, 'record id', np.arange(1, len(df)+1))
     order = ['record id', 'save datetime', 'author list', 'journal',  'title', 'abstract', 'PMID', 'doi', 'url',
-            'version', 'Epost date', 'publish date',
+            'version', 'epost date', 'publish date','date'
             'affiliations list', 'all affiliations', 'pdf url',
             'article_source', 'record change number','match result','match id']
     for col in order:
         if col not in df.columns.to_list():
             df[col]=''
     df = df[order]
-    #order_list = [col for col in order if col in df.columns.to_list()]
-    #df = df[order_list]
 
     df.fillna('', inplace=True)
     df.rename(columns=lambda x: x.lower(), inplace=True)
@@ -386,6 +391,9 @@ def Bibliometrics_Collect(start,
     df.to_csv('daily output/'+filename,index=False ,encoding='utf-8-sig')
     print('Fetch done.')
     return(df)
+
+
+
 
 
 

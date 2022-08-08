@@ -10,13 +10,13 @@ This file contain data process: update, compare, match pre-pub
 
 #########################
 ##### load database
-base = pd.read_csv('basedb.csv', encoding='utf-8-sig')
+base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
 base.fillna('', inplace=True)
 
 try:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=5)).strftime('%Y-%m-%d')
+    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 except:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=5)).strftime('%Y-%m-%d')
+    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 
 dailyresult = datetime.datetime.today().strftime('%Y-%m-%d') + '_4searchresult.csv'
 if file_exists('daily output/'+dailyresult):
@@ -29,7 +29,7 @@ else:
 ##### update database
 # only check row post after start date
 fstart=datetime.datetime.strptime(start, '%Y-%m-%d').strftime('%m/%d/%Y')
-base_check = base[(base['save datetime'] >= fstart)]
+base_check = base[(base['date'] >= fstart)] #save datetime
 
 ### delete db
 compy = datacompy.Compare(base_check, new, join_columns=['doi'])
@@ -56,8 +56,8 @@ base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
     by=['record id']).reset_index(drop=True)
 
 # save db
-changedb_old.to_csv('changedb old.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-changedb_new.to_csv('changedb new.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+changedb_old.to_csv('changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+changedb_new.to_csv('changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 deletedb.to_csv('deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
 
 
@@ -100,4 +100,4 @@ base = pd.concat([publication, preprint]).sort_values(
 base.to_csv('basedb.csv', index=False, encoding='utf-8-sig')
 
 pub_pre=base[base['match result']!='']
-pub_pre.to_csv('match pub-pre.csv',index=False, encoding='utf-8-sig')
+pub_pre.to_csv('match pub-preprint.csv',index=False, encoding='utf-8-sig')
