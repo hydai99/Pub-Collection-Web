@@ -370,13 +370,13 @@ def Bibliometrics_Collect(start,
     df['epost date2'] = pd.to_datetime(df['epost date'])
     df['publish date2'] = pd.to_datetime(df['publish date'])
     df.reset_index(drop=True,inplace=True)
-    df['newer date'] = [df.loc[i, 'epost date2'] if ( pd.isnull(df.loc[i, 'publish date'])==True or df.loc[i, 'epost date2'] >= df.loc[i, 'publish date2']) else df.loc[i, 'publish date2'] for i in range(len(df))]
-    df = df.sort_values(by=['newer date'], ascending=True).drop(
+    df['date'] = [df.loc[i, 'epost date2'] if ( pd.isnull(df.loc[i, 'publish date'])==True or df.loc[i, 'epost date2'] >= df.loc[i, 'publish date2']) else df.loc[i, 'publish date2'] for i in range(len(df))]
+    df = df.sort_values(by=['date'], ascending=True).drop(
         columns=['epost date2', 'publish date2'])
 
     df.insert(0, 'record id', np.arange(1, len(df)+1))
     order = ['record id', 'save datetime', 'author list', 'journal',  'title', 'abstract', 'PMID', 'doi', 'url',
-            'version', 'epost date', 'publish date','date'
+            'version', 'epost date', 'publish date','date',
             'affiliations list', 'all affiliations', 'pdf url',
             'article_source', 'record change number','match result','match id']
     for col in order:
