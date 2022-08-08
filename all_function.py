@@ -88,7 +88,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			all_authors = []
 			for author in authors:
 				all_authors.append(author.text)
-			time.sleep(.5)
+			time.sleep(.2)
 			author_list += [all_authors]
 
 		if (page+1)*num_page_results >= int(num_results_text):
