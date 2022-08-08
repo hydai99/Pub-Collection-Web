@@ -56,9 +56,10 @@ base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
     by=['record id']).reset_index(drop=True)
 
 # save db
-changedb_old.to_csv('changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-changedb_new.to_csv('changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-deletedb.to_csv('deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
+changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+deletedb.to_csv('database/deletedb.csv', mode='a', index=False,
+                header=False, encoding='utf-8-sig')
 
 
 #########################
@@ -97,7 +98,7 @@ for i in publication.index:
 # save
 base = pd.concat([publication, preprint]).sort_values(
     by=['record id']).drop(columns=['simTitles', 'sameFirstAuthor'])
-base.to_csv('basedb.csv', index=False, encoding='utf-8-sig')
+base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 
 pub_pre=base[base['match result']!='']
-pub_pre.to_csv('match pub-preprint.csv',index=False, encoding='utf-8-sig')
+pub_pre.to_csv('database/match pub-preprint.csv',index=False, encoding='utf-8-sig')
