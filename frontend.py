@@ -27,6 +27,7 @@ def table_select(table_option):
     if table_option == 'deletedb':
         df = alldeletedb
     df.fillna('', inplace=True)
+    #df.reset_index(drop=True,inplace=True)
     return df
 
 left,right=st.columns(2)
@@ -35,7 +36,6 @@ with left:
         'Which table you would like to check?',
         ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb')) 
 with right:
-    #### format selection
     format_select = st.radio(
     "What's table format you want?",
     ('short format','full text'))
@@ -46,11 +46,16 @@ df=table_select(table_option)
 col1, col2 = st.columns(2) #[3, 1]
 with col1:
     #### add search bar
-    search = st.text_input('Enter search words:').lower()
-with col2:
-    #### edit button
-    st.write('If you confirm to edit data, click button below.')
-    edit=st.button('Confirm edit!')
+    search = st.text_input('Enter search words: (Case Ignore)')
+
+    if search:
+        ind = []
+        for i in df.columns:
+            ind += list(df.loc[df[i].astype(str).str.lower()
+                        .str.contains(search.lower())].index)
+        df = df.iloc[list(set(ind)), :]
+        reload_data = True
+
 
 #####
 gb = GridOptionsBuilder.from_dataframe(df)
@@ -70,16 +75,16 @@ grid_options = gb.build()
 grid_table = AgGrid(df, grid_options, update_mode=GridUpdateMode.SELECTION_CHANGED,
                     enable_enterprise_modules=True)  #  width=20 use old version?  #, allow_unsafe_jscode=True
 
-####
-reload_data = False
-if search:
-    ind = []
-    for i in df.columns:
-        ind += list(df.loc[df[i].astype(str).str.lower().str.contains(search)].index)
-    df = df.iloc[list(set(ind)), :]
-    reload_data = True
 
+with col2:
+    #### edit button
+    st.write('If you confirm to edit data, click button below.')
+    edit = st.button('Confirm edit!')
 
+    if edit:
+        #df = grid_table['data']
+        grid_table['data'].to_csv(table_option+'.csv',index=False, encoding='utf-8-sig')
+        reload_data = False
 
 
 #### 2) compare & detail function
@@ -96,7 +101,7 @@ def compre_sel(sel_df):
     gb_sel.configure_column('index',  pinned='left')
     gb_sel.configure_default_column(autoHeight=True, groupable=True,
                                     wrapText=True,  value=True, enableRowGroup=True, aggFunc='sum')
-    gb_sel.configure_columns(column_names=sel_df.columns,maxWidth=1100/len(sel_row))
+    gb_sel.configure_columns(column_names=sel_df.columns,maxWidth=1000/len(sel_row))
     grid_options_sel = gb_sel.build()
     grid_table_sel = AgGrid(sel_df, grid_options_sel, update_mode=GridUpdateMode.SELECTION_CHANGED,
                             enable_enterprise_modules=True)  # fit_columns_on_grid_load=True
