@@ -28,13 +28,13 @@ else:
 
 ##### update database
 # only check row post after start date
-fstart=datetime.datetime.strptime(start, '%Y-%m-%d').strftime('%m/%d/%Y')
+fstart=datetime.datetime.strptime(start, '%Y-%m-%d').strftime('%Y-%m-%d')  #('%m/%d/%Y')
 base_check = base[(base['date'] >= fstart)] #save datetime
 
 ### delete db
-#compy = datacompy.Compare(base_check, new, join_columns=['doi'])
-#deletedb = compy.df1_unq_rows
-#base = base.drop(index=deletedb.index)
+compy = datacompy.Compare(base_check, new, join_columns=['doi'])
+deletedb = compy.df1_unq_rows
+base = base.drop(index=deletedb.index)
 
 ### changedb: Store new / old versions of modified records
 compy1 = datacompy.Compare(base_check, new, join_columns=['doi'])
