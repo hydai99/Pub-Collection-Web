@@ -27,8 +27,8 @@ if file_exists('daily output/'+dailyresult):
 else:
     new = af.Bibliometrics_Collect(start)
 
-new=transfer_date_format(new)
-base=transfer_date_format(base)
+new=af.transfer_date_format(new)
+base=af.transfer_date_format(base)
 
 ##### update database
 # only check row post after start date
