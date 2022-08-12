@@ -40,9 +40,9 @@ fstart = datetime.datetime.strptime(
 base_check = base[(base['date'] >= fstart)] #save datetime
 
 ### delete db
-compy = datacompy.Compare(base_check, new, join_columns=['doi'])
-deletedb = compy.df1_unq_rows
-base = base.drop(index=deletedb.index)
+#compy = datacompy.Compare(base_check, new, join_columns=['doi'])
+#deletedb = compy.df1_unq_rows
+#base = base.drop(index=deletedb.index)
 
 ### changedb: Store new / old versions of modified records
 compy1 = datacompy.Compare(base_check, new, join_columns=['doi'])
@@ -109,5 +109,5 @@ base = pd.concat([publication, preprint]).sort_values(
 base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 
 pub_pre=base[base['match result']!='']
-pub_pre.to_csv('database/match pub-preprint.csv',index=False, encoding='utf-8-sig')
+pub_pre.to_csv('database/matched pub-preprint.csv',index=False, encoding='utf-8-sig')
 

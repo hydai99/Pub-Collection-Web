@@ -34,8 +34,8 @@ left,right=st.columns(2)
 with left:
     table_option = st.selectbox(
         'Which table you would like to check?',
-        ('matched pub-preprint', 'basedb', 'changedb (old version)', 'changedb (new version)', 'deletedb'))
-        #('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb'))
+        #('matched pub-preprint', 'basedb', 'changedb (old version)', 'changedb (new version)', 'deletedb'))
+        ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb'))
 with right:
     format_select = st.radio(
     "What's table format you want?",
@@ -103,11 +103,11 @@ def compre_sel(sel_df):
     #sel_df.reset_index(drop=True, inplace=True)
 
     gb_sel = GridOptionsBuilder.from_dataframe(sel_df)
-    gb_sel.configure_column('index',  pinned='left')
+    gb_sel.configure_column('index',  pinned='left',weight=20)  ###
     gb_sel.configure_default_column(autoHeight=True, groupable=True,
                                     wrapText=True,  value=True, enableRowGroup=True, aggFunc='sum')
     gb_sel.configure_columns(
-        column_names=sel_df.columns, maxWidth=1750/sel_df.shape[1])
+        column_names=sel_df.columns, maxWidth=1700/sel_df.shape[1])
     grid_options_sel = gb_sel.build()
     grid_table_sel = AgGrid(sel_df, grid_options_sel, update_mode=GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED,
                             enable_enterprise_modules=True)  # fit_columns_on_grid_load=True
@@ -128,8 +128,6 @@ if len(sel_row) == 1:
 
         st.subheader('Possible Match Result')
         dmatch=dmatch.transpose()
-
-
         compre_sel(dmatch)
 
 
@@ -163,7 +161,7 @@ if len(sel_row) == 1:
                     pub_pre.to_csv('database/matched pub-preprint.csv',encoding='utf-8-sig', index=False)
 
                     st.write('Done')
-                    
+
                     import time
                     time.sleep(1)
 

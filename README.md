@@ -2,4 +2,4 @@
 
 CZ Biohub Network 2022 Summer Internship Project
 
-Link: https://hydai99-pub-collection-web-app-8xbh21.streamlitapp.com/
+Link: https://hydai99-pub-collection-web-frontend-sm73t1.streamlitapp.com/
