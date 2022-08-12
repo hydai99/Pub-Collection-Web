@@ -66,8 +66,7 @@ base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
 # save db
 changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-deletedb.to_csv('database/deletedb.csv', mode='a', index=False,
-                header=False, encoding='utf-8-sig')
+#deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
 
 
 #########################
