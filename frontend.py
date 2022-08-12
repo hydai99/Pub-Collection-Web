@@ -2,7 +2,7 @@
 
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode,  DataReturnMode, JsCode
 
 st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 st.header('Biohub publication search result.')
@@ -12,7 +12,7 @@ base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
 allchangedb_old= pd.read_csv( 'database/changedb (old version).csv', encoding='utf-8-sig')
 allchangedb_new= pd.read_csv('database/changedb (new version).csv' , encoding='utf-8-sig')
 alldeletedb= pd.read_csv('database/deletedb.csv' , encoding='utf-8-sig')
-pub_pre= pd.read_csv('database/match pub-preprint.csv',encoding='utf-8-sig')
+pub_pre= pd.read_csv('database/matched pub-preprint.csv',encoding='utf-8-sig')
 
 ##### 1. table selection
 def table_select(table_option):
@@ -34,7 +34,8 @@ left,right=st.columns(2)
 with left:
     table_option = st.selectbox(
         'Which table you would like to check?',
-        ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb')) 
+        ('matched pub-preprint', 'basedb', 'changedb (old version)', 'changedb (new version)', 'deletedb'))
+        #('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb'))
 with right:
     format_select = st.radio(
     "What's table format you want?",
@@ -72,9 +73,12 @@ gb.configure_columns(column_names=df.columns, maxWidth=200)  # column_names=[]
 gb.configure_selection(selection_mode='multiple', use_checkbox=True)
 #gb.configure_pagination(enabled=True, paginationAutoPageSize=True, paginationPageSize=10)
 grid_options = gb.build()
-grid_table = AgGrid(df, grid_options, update_mode=GridUpdateMode.SELECTION_CHANGED,
-                    enable_enterprise_modules=True)  #  width=20 use old version?  #, allow_unsafe_jscode=True
-
+grid_response = AgGrid(
+    df,
+    grid_options,
+    update_mode=GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED,
+    enable_enterprise_modules=True
+)
 
 with col2:
     #### edit button
@@ -82,33 +86,37 @@ with col2:
     edit = st.button('Confirm edit!')
 
     if edit:
-        #df = grid_table['data']
-        grid_table['data'].to_csv(table_option+'.csv',index=False, encoding='utf-8-sig')
-        reload_data = False
+        df = grid_response['data']
+        df.to_csv('database/'+table_option+'.csv', encoding='utf-8-sig', index=False)
+        st.write('Edit successful!')
 
 
 #### 2) compare & detail function
 st.subheader('Detail & Compare Records')
 
-sel_row = grid_table['selected_rows']  # type: list
+sel_row = grid_response['selected_rows']  # type: list
 
 def compre_sel(sel_df):
     sel_df.columns = sel_df.loc['title']
     sel_df = sel_df.drop(['save datetime', 'title'])
     sel_df.reset_index(inplace=True)
+    #sel_df.reset_index(drop=True, inplace=True)
 
     gb_sel = GridOptionsBuilder.from_dataframe(sel_df)
     gb_sel.configure_column('index',  pinned='left')
     gb_sel.configure_default_column(autoHeight=True, groupable=True,
                                     wrapText=True,  value=True, enableRowGroup=True, aggFunc='sum')
-    gb_sel.configure_columns(column_names=sel_df.columns,maxWidth=1000/len(sel_row))
+    gb_sel.configure_columns(
+        column_names=sel_df.columns, maxWidth=1750/sel_df.shape[1])
     grid_options_sel = gb_sel.build()
-    grid_table_sel = AgGrid(sel_df, grid_options_sel, update_mode=GridUpdateMode.SELECTION_CHANGED,
+    grid_table_sel = AgGrid(sel_df, grid_options_sel, update_mode=GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED,
                             enable_enterprise_modules=True)  # fit_columns_on_grid_load=True
 
 
+
+
 if len(sel_row) == 1:
-    st.json(sel_row[0])
+    #st.json(sel_row[0])
 
     match_result= pd.DataFrame(sel_row)['match result'].values[0]
     if match_result !='':
@@ -119,8 +127,65 @@ if len(sel_row) == 1:
             dmatch=pd.concat([dmatch,base.loc[base.loc[:,'doi'].str.contains(search_doi)]])
 
         st.subheader('Possible Match Result')
-        compre_sel(dmatch.transpose())
-        dmatch=pd.DataFrame()
+        dmatch=dmatch.transpose()
+
+        #dmatch.columns = dmatch.loc['title']
+        #dmatch = dmatch.drop(['save datetime', 'title'])  # ,'Unnamed:0'
+
+        compre_sel(dmatch)
+
+
+        m = dmatch.shape[1]
+        if m==2 or m==3:
+            if m==2:
+                col1, col2, col3 = st.columns((1, 3, 3))
+            if m==3:
+                col1, col2, col3, col4 = st.columns((1, 2, 2,2))
+                button_phold3 = col3.empty()
+                do_action3 = button_phold1.button('Change to this', key=3)
+
+            button_phold1 = col2.empty()
+            do_action1 = button_phold1.button('Change to this', key=1)
+
+            button_phold2 = col3.empty()
+            do_action2 = button_phold2.button('Change to this', key=2)
+
+            #x=pd.DataFrame(sel_row)['doi'].values[0]
+            #st.write(base.loc[base.loc[:, 'doi'].str.contains(x), :])
+
+            def change(do_action, i):
+                if do_action:
+                    x=pd.DataFrame(sel_row)['doi'].values[0]
+
+                    
+                    base.loc[base.loc[:, 'doi'].str.contains(x), :].to_csv( 'database/changedb (old version).csv',  mode='a', index=False, header=False, encoding='utf-8-sig')
+
+                    base.loc[base.loc[:, 'doi'].str.contains(x), 'match result']=dmatch.loc['journal',dmatch.columns.values[i-1]]+' '+dmatch.loc['doi',dmatch.columns.values[i-1]]
+                    base.to_csv('database/basedb.csv', encoding='utf-8-sig', index=False)
+
+                    base.loc[base.loc[:, 'doi'].str.contains(x), :].to_csv('database/changedb (new version).csv' , mode='a', index=False, header=False,  encoding='utf-8-sig')
+
+                    pub_pre.loc[pub_pre.loc[:, 'doi'].str.contains(x), 'match result']=dmatch.loc['journal',dmatch.columns.values[i-1]]+' '+dmatch.loc['doi',dmatch.columns.values[i-1]]
+                    pub_pre.to_csv('database/matched pub-preprint.csv',encoding='utf-8-sig', index=False)
+
+                    st.write('Done')
+                    import time
+                    time.sleep(1)
+
+                    pyautogui.hotkey("ctrl","F5")
+
+            change(do_action1, 1)
+            change(do_action2, 2)
+
+            if m==3:
+                change(do_action3, 3)
+
+        if m>=4:
+            st.write('sorry please change manually.')
+
+
+        dmatch = pd.DataFrame()
+
 
 
 if len(sel_row) > 1:
