@@ -13,6 +13,8 @@ This file contain data process: update, compare, match pre-pub
 base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
 base.fillna('', inplace=True)
 
+
+
 try:
     start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 except:
@@ -25,10 +27,16 @@ if file_exists('daily output/'+dailyresult):
 else:
     new = af.Bibliometrics_Collect(start)
 
+new=transfer_date_format(new)
+base=transfer_date_format(base)
 
 ##### update database
 # only check row post after start date
-fstart=datetime.datetime.strptime(start, '%Y-%m-%d').strftime('%Y-%m-%d')  #('%m/%d/%Y')
+fstart = datetime.datetime.strptime(
+    start, '%Y-%m-%d').strftime('%m/%d/%Y')  #('%Y-%m-%d')
+
+
+
 base_check = base[(base['date'] >= fstart)] #save datetime
 
 ### delete db
@@ -102,3 +110,4 @@ base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 
 pub_pre=base[base['match result']!='']
 pub_pre.to_csv('database/match pub-preprint.csv',index=False, encoding='utf-8-sig')
+

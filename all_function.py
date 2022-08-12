@@ -394,7 +394,14 @@ def Bibliometrics_Collect(start,
     return(df)
 
 
-
+def transfer_date_format(df):
+    col=['save datetime','epost date','publish date', 'date']
+    for i in col:
+        try:
+            df[i]=df[i].apply(lambda x: datetime.datetime.strptime(str(x), '%Y-%m-%d %H:%M:%S').strftime('%m/%d/%Y'))
+        except:
+            continue
+    return df
 
 
 
@@ -448,3 +455,4 @@ def sameFirstAuthorNameAndInitial(byline1, byline2):
     lenmin = min(3, len(fn1), len(fn2))
     # match on the 3 first characters?
     return fn1[0:lenmin].lower() == fn2[0:lenmin].lower()
+

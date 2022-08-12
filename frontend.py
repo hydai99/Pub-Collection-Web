@@ -116,7 +116,7 @@ def compre_sel(sel_df):
 
 
 if len(sel_row) == 1:
-    #st.json(sel_row[0])
+    st.json(sel_row[0])
 
     match_result= pd.DataFrame(sel_row)['match result'].values[0]
     if match_result !='':
@@ -129,8 +129,6 @@ if len(sel_row) == 1:
         st.subheader('Possible Match Result')
         dmatch=dmatch.transpose()
 
-        #dmatch.columns = dmatch.loc['title']
-        #dmatch = dmatch.drop(['save datetime', 'title'])  # ,'Unnamed:0'
 
         compre_sel(dmatch)
 
@@ -150,14 +148,10 @@ if len(sel_row) == 1:
             button_phold2 = col3.empty()
             do_action2 = button_phold2.button('Change to this', key=2)
 
-            #x=pd.DataFrame(sel_row)['doi'].values[0]
-            #st.write(base.loc[base.loc[:, 'doi'].str.contains(x), :])
-
             def change(do_action, i):
                 if do_action:
                     x=pd.DataFrame(sel_row)['doi'].values[0]
 
-                    
                     base.loc[base.loc[:, 'doi'].str.contains(x), :].to_csv( 'database/changedb (old version).csv',  mode='a', index=False, header=False, encoding='utf-8-sig')
 
                     base.loc[base.loc[:, 'doi'].str.contains(x), 'match result']=dmatch.loc['journal',dmatch.columns.values[i-1]]+' '+dmatch.loc['doi',dmatch.columns.values[i-1]]
@@ -169,6 +163,7 @@ if len(sel_row) == 1:
                     pub_pre.to_csv('database/matched pub-preprint.csv',encoding='utf-8-sig', index=False)
 
                     st.write('Done')
+                    
                     import time
                     time.sleep(1)
 
