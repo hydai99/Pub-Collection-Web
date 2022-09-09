@@ -14,6 +14,9 @@ allchangedb_new= pd.read_csv('database/changedb (new version).csv' , encoding='u
 alldeletedb= pd.read_csv('database/deletedb.csv' , encoding='utf-8-sig')
 pub_pre= pd.read_csv('database/matched pub-preprint.csv',encoding='utf-8-sig')
 
+preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
+nopre=base[ ~(base['journal'].isin(preprint_list)) & (base['match result'].notnull())] 
+
 ##### 1. table selection
 def table_select(table_option):
     if table_option == 'basedb':
@@ -26,16 +29,20 @@ def table_select(table_option):
         df = pub_pre
     if table_option == 'deletedb':
         df = alldeletedb
+    if table_option == 'publication non-preprint':
+        df=nopre
     df.fillna('', inplace=True)
+    df=af.standardize_name(df)
     #df.reset_index(drop=True,inplace=True)
     return df
+
 
 left,right=st.columns(2)
 with left:
     table_option = st.selectbox(
         'Which table you would like to check?',
         #('matched pub-preprint', 'basedb', 'changedb (old version)', 'changedb (new version)', 'deletedb'))
-        ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb'))
+        ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb','publication non-preprint'))
 with right:
     format_select = st.radio(
     "What's table format you want?",
@@ -87,7 +94,11 @@ with col2:
 
     if edit:
         df = grid_response['data']
-        df.to_csv('database/'+table_option+'.csv', encoding='utf-8-sig', index=False)
+        
+        if table_option=='publication non-preprint':
+            df.to_csv('database/nopre.csv', encoding='utf-8-sig', index=False)
+        else:
+            df.to_csv('database/'+table_option+'.csv', encoding='utf-8-sig', index=False)
         st.write('Edit successful!')
 
 
@@ -159,6 +170,9 @@ if len(sel_row) == 1:
 
                     pub_pre.loc[pub_pre.loc[:, 'doi'].str.contains(x), 'match result']=dmatch.loc['journal',dmatch.columns.values[i-1]]+' '+dmatch.loc['doi',dmatch.columns.values[i-1]]
                     pub_pre.to_csv('database/matched pub-preprint.csv',encoding='utf-8-sig', index=False)
+                    
+                    nopre=base[ ~(base['journal'].isin(preprint_list)) & (base['match result'].notnull())] 
+                    nopre.to_csv('database/nopre.csv', encoding='utf-8-sig', index=False)
 
                     st.write('Done')
 

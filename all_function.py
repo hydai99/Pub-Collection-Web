@@ -89,7 +89,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			for author in authors:
 				all_authors.append(author.text)
 			time.sleep(.2)
-			author_list += [all_authors]
+			author_list += [all_authors.replace(',',';')]
 
 		if (page+1)*num_page_results >= int(num_results_text):
 			break
@@ -346,8 +346,80 @@ def Pubmed_search(start_date, end_date, keyword):
     return(full_records_df)
 
 
-## 4: combine above 3 
-# pre: create a folder to save everyday search result
+
+#### 4:mathch author with external file
+# method 2 seems better
+def standardize_name(df):
+
+    from thefuzz import fuzz
+    from thefuzz import process
+
+    standard=pd.read_excel('database/Biohub authors.xlsx')  #database/
+    standard.dropna(how='all', axis=1,inplace=True)    
+
+    #standard.insert(0, 'author id', np.arange(1, len(standard)+1))
+    #standard['MatchName3']=standard['MatchName'].apply(lambda x: x.replace(',','')) 
+
+    standard['MatchName2']=standard['First Name']+' '+standard['Middle']+' '+standard['Last Name']
+
+    for ind,i in enumerate(df['author list']):
+        try:
+            i=i.split(';')
+        except:
+            i=i.split(',')
+
+        stand_name_list=list()
+        
+        for j in i:
+            j=re.sub(r'[^\w]', ' ', j.strip('#'))
+                
+            for ind2,standard_name in enumerate(standard['MatchName2']):
+                if fuzz.token_sort_ratio(j,standard_name)>77:  # 77~82
+                    x=standard.loc[ind2,'MatchName']
+                    stand_name_list.append(x)
+                
+        df.loc[ind,'MATCH biohub author']='; '.join(stand_name_list)
+        
+    return df
+
+
+def standardize_name2(df):
+
+    import re
+    from namematcher import NameMatcher
+
+    standard=pd.read_excel('Biohub authors.xlsx')  #database/
+    standard.dropna(how='all', axis=1,inplace=True)    
+
+    #standard.insert(0, 'author id', np.arange(1, len(standard)+1))
+    #standard['MatchName2']=standard['MatchName'].apply(lambda x: x.replace(',','')) 
+
+    standard['MatchName3']=standard['First Name']+' '+standard['Middle']+' '+standard['Last Name']
+
+    for ind,i in enumerate(df['author list']):
+        try:
+            i=i.split(';')
+        except:
+            i=i.split(',')
+
+        stand_name_list=list()
+        
+        for j in i:
+            j=re.sub(r'[^\w]', ' ', j.strip('#'))
+                
+            for ind2,standard_name in enumerate(standard['MatchName3']):
+                name_matcher = NameMatcher()
+                if name_matcher.match_names(j,standard_name)>0.89:  
+                    x=standard.loc[ind2,'MatchName']
+                    stand_name_list.append(x)
+                
+        df.loc[ind,'TEST biohub author']='; '.join(stand_name_list)
+        
+    return df
+
+
+## 5: combine above  
+# pre-requirement: create a folder to save everyday search result
 def Bibliometrics_Collect(start,
                             end=(datetime.date.today() -
                                 datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -386,6 +458,7 @@ def Bibliometrics_Collect(start,
 
     df.fillna('', inplace=True)
     df.rename(columns=lambda x: x.lower(), inplace=True)
+    df=standardize_name2(df)
 
     #filename = datetime.datetime.today().strftime('%Y-%m-%d')+'_4searchresult.csv'
     filename = end+'_4searchresult.csv'

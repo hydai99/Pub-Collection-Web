@@ -14,11 +14,11 @@ base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
 base.fillna('', inplace=True)
 
 
-
-try:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-except:
-    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+#try:
+#    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+#except:
+#    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+start=(datetime.date.today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 
 dailyresult = datetime.datetime.today().strftime('%Y-%m-%d') + '_4searchresult.csv'
 if file_exists('daily output/'+dailyresult):
@@ -34,23 +34,29 @@ base=af.transfer_date_format(base)
 # only check row post after start date
 fstart = datetime.datetime.strptime(
     start, '%Y-%m-%d').strftime('%m/%d/%Y')  #('%Y-%m-%d')
-
-
-
-base_check = base[(base['date'] >= fstart)] #save datetime
+ 
+base_check = base[(base['save datetime'] >= fstart)] #date?
 
 ### delete db
-#compy = datacompy.Compare(base_check, new, join_columns=['doi'])
-#deletedb = compy.df1_unq_rows
-#base = base.drop(index=deletedb.index)
+compy = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
+deletedb_0 = compy.df1_unq_rows
+deletedb=base.loc[base['doi'].isin(deletedb_0['doi'])]
+base = base.drop(index=deletedb.index)
 
 ### changedb: Store new / old versions of modified records
-compy1 = datacompy.Compare(base_check, new, join_columns=['doi'])
-compy2 = datacompy.Compare(base_check, new, join_columns=base.columns[2:-3])
-changedb_new = pd.concat([compy2.df2_unq_rows, compy1.df2_unq_rows,
+compy1=datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
+compy2 = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=new.columns[2:-3])
+
+changedb_new_0=pd.concat([compy2.df2_unq_rows, compy1.df2_unq_rows,
                          compy1.df2_unq_rows]).drop_duplicates(keep=False)
-changedb_old = base.loc[base['doi'].isin(changedb_new['doi'])]
-changedb_new.loc[:, 'record id'] = list(changedb_old['record id'])
+
+changedb_new=new.loc[new['doi'].isin(changedb_new_0['doi'])]
+changedb_old = base.loc[base['doi'].isin(changedb_new_0['doi'])]
+
+doi_old=list(changedb_old['doi'])
+changedb_new['doi']=changedb_new['doi'].astype(pd.CategoricalDtype(doi_old, ordered=True))
+changedb_new=changedb_new.sort_values(['doi'])
+changedb_new.loc[:, 'record id'] = list(changedb_old['record id']) 
 changedb_new['record change number'] += 1
 
 # totally new rcord (first time occur)
@@ -64,16 +70,13 @@ base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
     by=['record id']).reset_index(drop=True)
 
 # save db
-changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-#deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
 
 
 #########################
 ####  preprint match
-preprint_source = ['biorxiv', 'medrxiv', 'arxiv']
-preprint = base[base['journal'].isin(preprint_source)]
-publication = base[~base['journal'].isin(preprint_source)]
+preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
+preprint = base[base['journal'].isin(preprint_list)]
+publication = base[~base['journal'].isin(preprint_list)]
 
 mid = 1
 for i in publication.index:
@@ -102,7 +105,9 @@ for i in publication.index:
                      match_candidate.iloc[0, 0], 'match id'] = mid
         mid += 1
 
-# save
+
+# save all db
+
 base = pd.concat([publication, preprint]).sort_values(
     by=['record id']).drop(columns=['simTitles', 'sameFirstAuthor'])
 base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
@@ -110,3 +115,7 @@ base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 pub_pre=base[base['match result']!='']
 pub_pre.to_csv('database/matched pub-preprint.csv',index=False, encoding='utf-8-sig')
 
+
+changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
