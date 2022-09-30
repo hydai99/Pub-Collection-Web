@@ -89,7 +89,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 			for author in authors:
 				all_authors.append(author.text.replace(',',';'))  # check
 			time.sleep(.2)
-			author_list += [all_authors]
+			author_list += [all_authors.replace(',',';')]
 
 		if (page+1)*num_page_results >= int(num_results_text):
 			break
@@ -346,6 +346,7 @@ def Pubmed_search(start_date, end_date, keyword):
     return(full_records_df)
 
 
+<<<<<<< HEAD
 # 3.2 pubmed search 2. using api
 import math
 import urllib.parse
@@ -512,13 +513,19 @@ def Pubmed_search2(start_date, end_date):
     
     return Articlesinfo
 
+=======
+>>>>>>> 103fb4f1884bb13dc6a2c2c40a6f917b326f404e
 
 #### 4:mathch author with external file
 # method 2 seems better
 def standardize_name(df):
 
     from thefuzz import fuzz
+<<<<<<< HEAD
 
+=======
+    from thefuzz import process
+>>>>>>> 103fb4f1884bb13dc6a2c2c40a6f917b326f404e
 
     standard=pd.read_excel('database/Biohub authors.xlsx')  #database/
     standard.dropna(how='all', axis=1,inplace=True)    
@@ -544,7 +551,11 @@ def standardize_name(df):
                     x=standard.loc[ind2,'MatchName']
                     stand_name_list.append(x)
                 
+<<<<<<< HEAD
         df.loc[ind,'Match biohub author']='; '.join(stand_name_list)
+=======
+        df.loc[ind,'MATCH biohub author']='; '.join(stand_name_list)
+>>>>>>> 103fb4f1884bb13dc6a2c2c40a6f917b326f404e
         
     return df
 
@@ -579,7 +590,11 @@ def standardize_name2(df):
                     x=standard.loc[ind2,'MatchName']
                     stand_name_list.append(x)
                 
+<<<<<<< HEAD
         df.loc[ind,'Match biohub author']='; '.join(stand_name_list)
+=======
+        df.loc[ind,'TEST biohub author']='; '.join(stand_name_list)
+>>>>>>> 103fb4f1884bb13dc6a2c2c40a6f917b326f404e
         
     return df
 
