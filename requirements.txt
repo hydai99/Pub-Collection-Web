@@ -12,3 +12,4 @@ pillow
 lxml
 thefuzz
 jellyfish
+tqdm
