@@ -87,7 +87,7 @@ def BioMedrxiv_Search(start_date,end_date,keyword):
 				'span', attrs={'class': 'highwire-citation-author'})
 			all_authors = []
 			for author in authors:
-				all_authors.append(author.text)
+				all_authors.append(author.text.replace(',',';'))  # check
 			time.sleep(.2)
 			author_list += [all_authors]
 
@@ -346,8 +346,246 @@ def Pubmed_search(start_date, end_date, keyword):
     return(full_records_df)
 
 
-## 4: combine above 3 
-# pre: create a folder to save everyday search result
+# 3.2 pubmed search 2. using api
+import math
+import urllib.parse
+import uuid
+import xml.etree.ElementTree as ET
+from collections import OrderedDict
+from tqdm import tqdm_notebook as tqdm
+
+def Pubmed_search2(start_date, end_date):
+
+    #BASEURL_INFO = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi'
+    BASEURL_SRCH = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi'
+    BASEURL_FTCH = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'
+
+    # parameters
+    SOURCE_DB    = 'pubmed'     #pubmed, nuccore, nucest, nucgss, popset, protein
+    TERM         = 'biohub[ad]'     # Entrez text query.   # (zuckerb* AND biohub) OR "cz biohub" OR "czi biohub"
+    DATE_TYPE    = 'pdat'       # Type of date used to limit a search. The allowed values vary between Entrez databases, but common values are 'mdat' (modification date), 'pdat' (publication date) and 'edat' (Entrez date). Generally an Entrez database will have only two allowed values for datetype.
+    start_date  = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y/%m/%d')
+    end_date  = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y/%m/%d')
+    
+    SEP          = ' ; '
+    BATCH_NUM    = 2000
+
+    def mkquery(base_url, params):
+        base_url += '?'
+        for key, value in zip(params.keys(), params.values()):
+            base_url += '{key}={value}&'.format(key=key, value=value)
+        url = base_url[0:len(base_url) - 1]
+        print('request url is: ' + url)
+        return url
+
+    def getXmlFromURL(base_url, params):
+        response = requests.get(mkquery(base_url, params))
+        return ET.fromstring(response.text)
+
+    def getTextFromNode(root, path, fill='', mode=0, attrib='attribute'):
+        if (root.find(path) == None):
+            return fill
+        else:
+            if mode == 0:
+                return root.find(path).text
+            if mode == 1:
+                return root.find(path).get(attrib)
+
+    rootXml = getXmlFromURL(BASEURL_SRCH, {
+        'db': SOURCE_DB,
+        'term': TERM,
+        'usehistory': 'y',
+        'datetype': DATE_TYPE,
+        'mindate': start_date,
+        'maxdate': end_date})
+
+    Count = rootXml.find('Count').text
+    QueryKey = rootXml.find('QueryKey').text
+    WebEnv = urllib.parse.quote(rootXml.find('WebEnv').text)
+
+    articleDics = []
+    authorArticleDics = []
+
+
+    def getTextFromNode(root, path, fill='', mode=0, attrib='attribute'):
+        if (root.find(path) == None):
+            return fill
+        else:
+            if mode == 0:
+                return root.find(path).text
+            if mode == 1:
+                return root.find(path).get(attrib)
+
+
+    def pushData(rootXml):
+        for article in rootXml.iter('PubmedArticle'):
+            # get article info
+            articleDic = {
+                'title'        : getTextFromNode(article, 'MedlineCitation/Article/ArticleTitle', ''),
+                'epost date'   : '/'.join([date.text if date.text != None else ''  for date in article.findall('MedlineCitation/Article/ArticleDate/')]),  # YYYY/MM/DD
+                'publish date' : '/'.join([date.text if date.text != None else ''  for date in article.findall('PubmedData/History/PubMedPubDate[@PubStatus="pubmed"]/')]),  # YYYY/MM/DD
+                'pmid'                    : getTextFromNode(article, 'MedlineCitation/PMID', ''),
+                'abstract'                : getTextFromNode(article, 'MedlineCitation/Article/Abstract/AbstractText', ''),
+                'doi'                     : getTextFromNode(article, 'MedlineCitation/Article/ELocationID[@EIdType="doi"]', ''),
+                'author list'                 : SEP.join([author.find('ForeName').text + ' ' +  author.find('LastName').text if author.find('CollectiveName') == None else author.find('CollectiveName').text for author in article.findall('MedlineCitation/Article/AuthorList/')]),
+                'journal'            : getTextFromNode(article, 'MedlineCitation/Article/Journal/Title', ''),
+                'keyword'                 : SEP.join([keyword.text if keyword.text != None else ''  for keyword in article.findall('MedlineCitation/KeywordList/')])
+                #'AuthorIdentifiers'       : SEP.join([getTextFromNode(author, 'Identifier', 'None') for author in article.findall('MedlineCitation/Article/AuthorList/')]),
+                #'AuthorIdentifierSources' : SEP.join([getTextFromNode(author, 'Identifier', 'None', 1, 'Source') for author in article.findall('MedlineCitation/Article/AuthorList/')]),
+            }
+            articleDics.append(OrderedDict(articleDic))
+
+            if article.find('MedlineCitation/MeshHeadingList/MeshHeading/') != None:
+                tmp = article
+
+            # get author info
+            for author in article.findall('MedlineCitation/Article/AuthorList/'):
+
+                # publish author ID
+                # * It's only random id. not use for identify author. if you want to identify author, you can use identifier.
+                authorId = str(uuid.uuid4())
+
+                # author article
+                authorArticleDic = {
+                    'authorId'         : authorId,
+                    'pmid'             : getTextFromNode(article, 'MedlineCitation/PMID', ''),
+                    'name'             : getTextFromNode(author, 'ForeName') + ' ' +  getTextFromNode(author,'LastName') if author.find('CollectiveName') == None else author.find('CollectiveName').text,
+                    'identifier'       : getTextFromNode(author, 'Identifier', '') ,
+                    'identifierSource' : getTextFromNode(author, 'Identifier', '', 1, 'Source'),
+                }
+                
+                affiliations = list()
+                if author.find("./AffiliationInfo/Affiliation") is not None:
+                    for affil in author.findall("./AffiliationInfo/Affiliation"):
+                        affiliations.append(affil.text)
+                authorArticleDic['affiliation']= "; ".join(affiliations)
+        
+                authorArticleDics.append(OrderedDict(authorArticleDic))
+
+    # ceil
+    iterCount = math.ceil(int(Count) / BATCH_NUM)
+
+    # get all data
+    for i in tqdm(range(iterCount)):
+        rootXml = getXmlFromURL(BASEURL_FTCH, {
+            'db': SOURCE_DB,
+            'query_key': QueryKey,
+            'WebEnv': WebEnv,
+            'retstart': i * BATCH_NUM,
+            'retmax': BATCH_NUM,
+            'retmode': 'xml'})
+        
+        pushData(rootXml)
+
+    # deal with data
+    AuthorInfo=pd.DataFrame(authorArticleDics)
+    #Articlesinfo.to_csv('pubmed api.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+
+    Articlesinfo=pd.DataFrame(articleDics)
+    Articlesinfo['url']=Articlesinfo['pmid'].apply(lambda x: 'https://pubmed.ncbi.nlm.nih.gov/'+x)
+
+    for ind,i in enumerate(AuthorInfo['affiliation']):
+        if '@' in i:
+            AuthorInfo.loc[ind,'ISEmail']='Yes'
+        
+        if ('Biohub' or 'BioHub' or 'biohub' or 'BIOHUB') in i:
+            AuthorInfo.loc[ind,'ISBiohub author']='Yes'
+
+
+    # apply standard author name.
+    # extract biohub author for each pmid. put them into right field
+    add_bha=AuthorInfo.loc[(AuthorInfo['ISBiohub author']=='Yes'),['pmid','name','affiliation']]  # biohub author  
+    add_coa=AuthorInfo.loc[(AuthorInfo['ISEmail']=='Yes'),['pmid','name','affiliation']] # Corresponding author  
+
+    d2=add_bha.groupby('pmid', as_index=False).agg(sum)[['pmid','name']].rename(columns={'name':'Biohub author'})
+    d3=add_coa.groupby('pmid', as_index=False).agg(sum)[['pmid','name']].rename(columns={'name':'Corresponding author'})
+
+    d2['pmid']=d2['pmid'].astype(str)
+    d3['pmid']=d3['pmid'].astype(str)
+
+    Articlesinfo=pd.merge(Articlesinfo,d2,how='left',on=['pmid'])
+    Articlesinfo=pd.merge(Articlesinfo,d3,how='left',on=['pmid'])
+
+    #AuthorInfo.to_csv('pubmed api author.csv',index=False, encoding='utf-8-sig')
+    AuthorInfo.to_csv('pubmed api author.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
+    print('Pubmed: Fetched '+Count+' records.')
+    
+    return Articlesinfo
+
+
+#### 4:mathch author with external file
+# method 2 seems better
+def standardize_name(df):
+
+    from thefuzz import fuzz
+
+
+    standard=pd.read_excel('database/Biohub authors.xlsx')  #database/
+    standard.dropna(how='all', axis=1,inplace=True)    
+
+    #standard.insert(0, 'author id', np.arange(1, len(standard)+1))
+    #standard['MatchName3']=standard['MatchName'].apply(lambda x: x.replace(',','')) 
+
+    standard['MatchName2']=standard['First Name']+' '+standard['Middle']+' '+standard['Last Name']
+
+    for ind,i in enumerate(df['author list']):
+        try:
+            i=i.split(';')
+        except:
+            i=i.split(',')
+
+        stand_name_list=list()
+        
+        for j in i:
+            j=re.sub(r'[^\w]', ' ', j.strip('#'))
+                
+            for ind2,standard_name in enumerate(standard['MatchName2']):
+                if fuzz.token_sort_ratio(j,standard_name)>77:  # 77~82
+                    x=standard.loc[ind2,'MatchName']
+                    stand_name_list.append(x)
+                
+        df.loc[ind,'Match biohub author']='; '.join(stand_name_list)
+        
+    return df
+
+
+def standardize_name2(df):
+
+    import re
+    from namematcher import NameMatcher
+
+    standard=pd.read_excel('Biohub authors.xlsx')  #database/
+    standard.dropna(how='all', axis=1,inplace=True)    
+
+    #standard.insert(0, 'author id', np.arange(1, len(standard)+1))
+    #standard['MatchName2']=standard['MatchName'].apply(lambda x: x.replace(',','')) 
+
+    standard['MatchName3']=standard['First Name']+' '+standard['Middle']+' '+standard['Last Name']
+
+    for ind,i in enumerate(df['author list']):
+        try:
+            i=i.split(';')
+        except:
+            i=i.split(',')
+
+        stand_name_list=list()
+        
+        for j in i:
+            j=re.sub(r'[^\w]', ' ', j.strip('#'))
+                
+            for ind2,standard_name in enumerate(standard['MatchName3']):
+                name_matcher = NameMatcher()
+                if name_matcher.match_names(j,standard_name)>0.89:  
+                    x=standard.loc[ind2,'MatchName']
+                    stand_name_list.append(x)
+                
+        df.loc[ind,'Match biohub author']='; '.join(stand_name_list)
+        
+    return df
+
+
+## 5: combine above  
+# pre-requirement: create a folder to save everyday search result
 def Bibliometrics_Collect(start,
                             end=(datetime.date.today() -
                                 datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -363,6 +601,7 @@ def Bibliometrics_Collect(start,
     df1 = BioMedrxiv_Search(start_date=start, end_date=end, keyword=Keyword)
     df2 = Arxiv_Search(start_date=start, keyword=Keyword)
     df3 = Pubmed_search(start_date=start, end_date=end, keyword=Keyword)
+    df3 = Pubmed_search2(start_date=start, end_date=end, keyword=Keyword)
 
     df = pd.concat([df1, df2, df3])
     df['record change number'] = 0
@@ -386,6 +625,7 @@ def Bibliometrics_Collect(start,
 
     df.fillna('', inplace=True)
     df.rename(columns=lambda x: x.lower(), inplace=True)
+    df=standardize_name2(df)
 
     #filename = datetime.datetime.today().strftime('%Y-%m-%d')+'_4searchresult.csv'
     filename = end+'_4searchresult.csv'
