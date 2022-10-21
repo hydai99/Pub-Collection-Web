@@ -1,5 +1,7 @@
 # streamlit run frontend.py --global.dataFrameSerialization="legacy"
 
+# 加一个按钮用来生成两种报告
+
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode,  DataReturnMode, JsCode

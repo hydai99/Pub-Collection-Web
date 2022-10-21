@@ -18,9 +18,9 @@ base.fillna('', inplace=True)
 #    start=(datetime.datetime.strptime(max(base['save datetime']), '%m/%d/%Y')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 #except:
 #    start=(datetime.datetime.strptime(max(base['save datetime']), '%Y-%m-%d')-datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-start=(datetime.date.today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+start=(datetime.date.today() - datetime.timedelta(days=5)).strftime('%Y-%m-%d')
 
-dailyresult = datetime.datetime.today().strftime('%Y-%m-%d') + '_4searchresult.csv'
+dailyresult = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d') + '_4searchresult.csv'
 if file_exists('daily output/'+dailyresult):
     new = pd.read_csv('daily output/'+dailyresult, encoding='utf-8-sig')
     new.fillna('', inplace=True)
@@ -30,8 +30,10 @@ else:
 new=af.transfer_date_format(new)
 base=af.transfer_date_format(base)
 
-##### update database
+######################### update database
+
 # only check row post after start date
+# fstart: formated start
 fstart = datetime.datetime.strptime(
     start, '%Y-%m-%d').strftime('%m/%d/%Y')  #('%Y-%m-%d')
  
@@ -41,11 +43,11 @@ base_check = base[(base['save datetime'] >= fstart)] #date?
 compy = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
 deletedb_0 = compy.df1_unq_rows
 deletedb=base.loc[base['doi'].isin(deletedb_0['doi'])]
-base = base.drop(index=deletedb.index)
+#base = base.drop(index=deletedb.index)  # start after enough dataset.
 
 ### changedb: Store new / old versions of modified records
-compy1=datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
-compy2 = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=new.columns[2:-3])
+compy1=datacompy.Compare(base_check.iloc[:,2:-1], new.iloc[:,2:-1], join_columns=['doi'])
+compy2 = datacompy.Compare(base_check.iloc[:,2:-1], new.iloc[:,2:-1], join_columns=new.columns[2:-2])
 
 changedb_new_0=pd.concat([compy2.df2_unq_rows, compy1.df2_unq_rows,
                          compy1.df2_unq_rows]).drop_duplicates(keep=False)
@@ -69,8 +71,6 @@ base = base.drop(index=changedb_old.index)
 base = pd.concat([base, changedb_new, completelynewdb]).sort_values(
     by=['record id']).reset_index(drop=True)
 
-# save db
-
 
 #########################
 ####  preprint match
@@ -83,8 +83,9 @@ for i in publication.index:
     for j in preprint.index:
         preprint.loc[j, 'simTitles'] = af.similarity(
             publication.loc[i, 'title'], preprint.loc[j, 'title'])
-        preprint.loc[j, 'sameFirstAuthor'] = af.sameFirstAuthorNameAndInitial(
-            publication.loc[i, 'author list'], preprint.loc[j, 'author list'])
+        #preprint.loc[j, 'sameFirstAuthor'] = af.sameFirstAuthorNameAndInitial(
+        #    publication.loc[i, 'authors'], preprint.loc[j, 'authors'])
+        preprint.loc[j, 'sameFirstAuthor'] = max(af.sameFirstAuthorNameAndInitial(publication.loc[i, 'authors'], preprint.loc[j, 'authors']),af.sameFirstAuthorNameAndInitial(publication.loc[i, 'authors'], preprint.loc[j, 'authors2']))
 
     match_candidate = preprint.loc[(preprint['simTitles'] >= 0.8) | ((preprint['simTitles'] >= 0.1) & (
         preprint['sameFirstAuthor'])), :].sort_values(by=['simTitles'], ascending=False)
@@ -94,25 +95,26 @@ for i in publication.index:
         # 3: Journal column's index. 4: Publication notes.  8: DOI. 30:'New Note'
         match_candidate.loc[:, 'note'] = match_candidate.loc[:, 'journal'] + \
             ' ' + match_candidate.loc[:,'doi']
-        publication.loc[i, 'match result'] = match_candidate.loc[:, 'note'].str.cat(
+        publication.loc[i, 'possible match result'] = match_candidate.loc[:, 'note'].str.cat(
             sep=' ; ')  # .values
         publication.loc[i, 'match id'] = mid
 
         # also write note in preprint
         preprint.loc[preprint['record id'] == match_candidate.iloc[0, 0],
-                     'match result'] = 'Now published in '+publication.loc[i, 'journal']+' '+publication.loc[i, 'doi']
+                     'possible match result'] = 'Now published in '+publication.loc[i, 'journal']+' '+publication.loc[i, 'doi']
         preprint.loc[preprint['record id'] ==
                      match_candidate.iloc[0, 0], 'match id'] = mid
         mid += 1
 
 
+#########################
 # save all db
 
 base = pd.concat([publication, preprint]).sort_values(
     by=['record id']).drop(columns=['simTitles', 'sameFirstAuthor'])
 base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 
-pub_pre=base[base['match result']!='']
+pub_pre=base[base['possible match result']!='']
 pub_pre.to_csv('database/matched pub-preprint.csv',index=False, encoding='utf-8-sig')
 
 
