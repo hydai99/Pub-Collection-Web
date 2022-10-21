@@ -1,4 +1,5 @@
 import all_function as af
+import numpy as np
 import pandas as pd
 import datetime
 import datacompy
@@ -114,10 +115,9 @@ base = pd.concat([publication, preprint]).sort_values(
     by=['record id']).drop(columns=['simTitles', 'sameFirstAuthor'])
 base.to_csv('database/basedb.csv', index=False, encoding='utf-8-sig')
 
-pub_pre=base[base['possible match result']!='']
+pub_pre=base[base.replace('', np.NaN)[['confirm preprint doi','confirm published doi','possible match result']].notna().any(1)]
+
 pub_pre.to_csv('database/matched pub-preprint.csv',index=False, encoding='utf-8-sig')
-
-
 changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')

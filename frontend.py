@@ -17,7 +17,7 @@ alldeletedb= pd.read_csv('database/deletedb.csv' , encoding='utf-8-sig')
 pub_pre= pd.read_csv('database/matched pub-preprint.csv',encoding='utf-8-sig')
 
 preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
-nopre=base[ ~(base['journal'].isin(preprint_list)) & (base['match result'].notnull())] 
+nopre=base[ ~(base['journal'].isin(preprint_list)) & base[['confirm preprint doi','possible match result']].notnull().any(1)]
 
 ##### 1. table selection
 def table_select(table_option):
@@ -34,7 +34,7 @@ def table_select(table_option):
     if table_option == 'publication non-preprint':
         df=nopre
     df.fillna('', inplace=True)
-    df=af.standardize_name(df)
+    #df=af.standardize_name(df)
     #df.reset_index(drop=True,inplace=True)
     return df
 
