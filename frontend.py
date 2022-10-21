@@ -69,6 +69,7 @@ with col1:
 
 #####
 gb = GridOptionsBuilder.from_dataframe(df)
+gb.configure_pagination(enabled=True, paginationAutoPageSize=True, paginationPageSize=20)
 if format_select == 'short format':
     gb.configure_default_column(editable=True, groupable=True, wrapText=True, enableRowGroup=True,
                                 aggFunc='sum', sizeColumnsToFit=True) 
@@ -76,11 +77,11 @@ if format_select == 'short format':
 if format_select == 'full text':
     gb.configure_default_column(editable=True, groupable=True, wrapText=True, enableRowGroup=True,
                                 aggFunc='sum', sizeColumnsToFit=True, autoHeight=True)
-    #gb.configure_column(field="Author List", maxWidth=200)  # if want to set for single row
+    gb.configure_column(field="authors", maxWidth=200)  # if want to set for single row
 
-gb.configure_columns(column_names=df.columns, maxWidth=200)  # column_names=[]
+#gb.configure_columns(column_names=df.columns, maxWidth=200)  # column_names=[]
 gb.configure_selection(selection_mode='multiple', use_checkbox=True)
-#gb.configure_pagination(enabled=True, paginationAutoPageSize=True, paginationPageSize=10)
+
 grid_options = gb.build()
 grid_response = AgGrid(
     df,
