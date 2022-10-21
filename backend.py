@@ -44,7 +44,7 @@ base_check = base[(base['save datetime'] >= fstart)] #date?
 compy = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
 deletedb_0 = compy.df1_unq_rows
 deletedb=base.loc[base['doi'].isin(deletedb_0['doi'])]
-#base = base.drop(index=deletedb.index)  # start after enough dataset.
+base = base.drop(index=deletedb.index)  # start after enough dataset.
 
 ### changedb: Store new / old versions of modified records
 compy1=datacompy.Compare(base_check.iloc[:,2:-1], new.iloc[:,2:-1], join_columns=['doi'])
