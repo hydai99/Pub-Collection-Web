@@ -13,8 +13,7 @@ import urllib.parse
 import uuid
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from itertools import permutations 
-from tqdm import tqdm_notebook as tqdm # can remove 
+from itertools import permutations
 
 
 
