@@ -1,8 +1,6 @@
 
         
-        
-        
-    # streamlit run test.py --global.dataFrameSerialization="legacy"
+# streamlit run web.py --global.dataFrameSerialization="legacy"
 
 
 import pandas as pd
@@ -244,7 +242,7 @@ if status_select =='Record':
 
     ##### coding
     # 1. Select author list   # 需要确定下
-    author=pd.read_excel('database/Biohub authors.xlsx')  #  biohub author
+    author=pd.read_csv('database/Biohub authors.csv', encoding='utf-8-sig')  #  biohub author
 
     intramural=author[author['Campus (simple)'] == 'Biohub']
     investigator=author.loc[author['Role'] == 'Investigator']
