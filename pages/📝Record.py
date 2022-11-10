@@ -19,6 +19,9 @@ end = end_date.strftime("%Y-%m-%d")
 
 st.write('The time period you choose is: '+str(start_date)+' ~ '+str(end_date))
 
+df = pd.read_csv('../database/basedb.csv', encoding='utf-8-sig')
+st.write(df)
+
 ##### coding
 # 1. Select author list   # 需要确定下
 author=pd.read_excel('../database/Biohub authors.xlsx')  #  biohub author
