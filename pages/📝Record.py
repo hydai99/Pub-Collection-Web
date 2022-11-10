@@ -21,7 +21,7 @@ st.write('The time period you choose is: '+str(start_date)+' ~ '+str(end_date))
 
 ##### coding
 # 1. Select author list   # 需要确定下
-author=pd.read_excel('./database/Biohub authors.xlsx')  #  biohub author
+author=pd.read_excel('../database/Biohub authors.xlsx')  #  biohub author
 
 intramural=author[author['Campus (simple)'] == 'Biohub']
 investigator=author.loc[author['Role'] == 'Investigator']
@@ -29,7 +29,7 @@ investigator=author.loc[author['Role'] == 'Investigator']
 df_a=author.loc[(author['Campus (simple)'] == 'Biohub') | (author['Role'] == 'Investigator') ]
 
 # 2. Choose publication & prerpint within specific time period  # 指定时间内的pub & pre
-df = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
+df = pd.read_csv('../database/basedb.csv', encoding='utf-8-sig')
 df.fillna('', inplace=True)
 
 # 2.1 Exclude 'review list'
