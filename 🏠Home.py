@@ -1,4 +1,4 @@
-# streamlit run frontend.py --global.dataFrameSerialization="legacy"
+# streamlit run 🏠Home.py --global.dataFrameSerialization="legacy"
 
 # 加一个按钮用来生成两种报告
 
@@ -8,6 +8,11 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode,  DataReturnMod
 
 st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 st.header('Biohub publication search result.')
+
+# add_selectbox = st.sidebar.selectbox(
+#     "page selection",
+#     ("record", "report")
+# )
 
 ##### 0. load data
 base = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
@@ -92,7 +97,7 @@ grid_response = AgGrid(
 
 with col2:
     #### edit button
-    st.write('If you confirm to edit data, click button below.')
+    st.write('Press **return/enter** after you change data.\n\n  If you confirm to edit data, click button below.')
     edit = st.button('Confirm edit!')
 
     if edit:
@@ -102,7 +107,9 @@ with col2:
             df.to_csv('database/nopre.csv', encoding='utf-8-sig', index=False)
         else:
             df.to_csv('database/'+table_option+'.csv', encoding='utf-8-sig', index=False)
+            
         st.write('Edit successful!')
+
 
 
 #### 2) compare & detail function
