@@ -4,6 +4,7 @@ import streamlit as st
 # import datetime
 # import all_function as af
 
+# streamlit run pages/📝Record.py --global.dataFrameSerialization="legacy"
 
 st.header('Publication Report')
 
@@ -20,7 +21,7 @@ st.write('The time period you choose is: '+str(start_date)+' ~ '+str(end_date))
 
 ##### coding
 # 1. Select author list   # 需要确定下
-author=pd.read_excel('database/Biohub authors.xlsx')  #  biohub author
+author=pd.read_excel('./database/Biohub authors.xlsx')  #  biohub author
 
 intramural=author[author['Campus (simple)'] == 'Biohub']
 investigator=author.loc[author['Role'] == 'Investigator']
