@@ -270,7 +270,7 @@ if status_select =='Record':
       
         click=st.button('submit')
         
-        if click:
+        if click:  # using function to ahcieve this
             if sel_campus_sim==[] or sel_campus_sim==['All']:  
                 con_campus_sim=['UCSF', 'Stanford', 'Berkeley', 'Biohub']
             else:
