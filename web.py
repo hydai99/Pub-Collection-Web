@@ -17,6 +17,7 @@ status_select = st.sidebar.selectbox(
 
 
 
+
 #st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 
 if status_select == 'Home':
@@ -234,7 +235,8 @@ if status_select =='Record':
         start_date = st.date_input("Input Start Date", value=pd.to_datetime("2022-06-01"))
     with col2:
         end_date = st.date_input("Input End Date", value=pd.to_datetime("today"))
-
+    
+    
     start = start_date.strftime("%Y-%m-%d")
     end = end_date.strftime("%Y-%m-%d")
 
@@ -244,12 +246,77 @@ if status_select =='Record':
     # 1. Select author list   # 需要确定下
     author=pd.read_csv('database/Biohub authors.csv', encoding='utf-8-sig')  #  biohub author
 
+    filter_author=author['MatchName'].str.replace(',','').to_list()
+
+    with st.expander("advance filter"):
+        cola, colb = st.columns(2)
+        with cola:
+            sel_campus_sim= st.multiselect('Campus (simple)',
+                ['All','UCSF', 'Stanford', 'Berkeley', 'Biohub'])
+        with colb:
+            sel_campus= st.multiselect('Campus',
+                ['All','UCSF','UCSF/Gladstone', 'Stanford', 'Berkeley','Berkeley/LBNL', 'Biohub'])
+            
+        colc, cold = st.columns(2)
+        with colc:
+            sel_team= st.multiselect('team',
+                ['All','NA', 'Computational Microscopy', 'Infectious Disease', 'Genome Engineering', 'Data Science', 'Proteomics/Mass Spec', 'Genomics', 'BioEngineering', 'Quantitative Cell Science'])
+        with cold:
+            sel_status= st.multiselect('status',
+                ['All','Alumni', 'Former', 'Current'])
+        
+        sel_role= st.multiselect('role',
+                ['All','Collaborator', 'Group leader', 'Investigator', 'Lab manager', 'Platform leader', 'President', 'Project Leader', 'Senior scientist/engineer'])
+      
+        click=st.button('submit')
+        
+        if click:
+            if sel_campus_sim==[] or sel_campus_sim==['All']:  
+                con_campus_sim=['UCSF', 'Stanford', 'Berkeley', 'Biohub']
+            else:
+                con_campus_sim=sel_campus_sim
+                
+                
+            if sel_campus==[] or sel_campus==['All']:
+                con_campus=['UCSF','UCSF/Gladstone', 'Stanford', 'Berkeley','Berkeley/LBNL', 'Biohub']
+            else:
+                con_campus=sel_campus
+                
+            if sel_team==[] or sel_team==['All']:
+                con_team=['NA', 'Computational Microscopy', 'Infectious Disease', 'Genome Engineering', 'Data Science', 'Proteomics/Mass Spec', 'Genomics', 'BioEngineering', 'Quantitative Cell Science']
+            else:
+                con_team=sel_team
+                
+            if sel_status==[] or sel_status==['All']:
+                con_status=['Alumni', 'Former', 'Current']
+            else:
+                con_status=sel_status
+                
+            if sel_role==[] or sel_role==['All']:
+                con_role=['Collaborator', 'Group leader', 'Investigator', 'Lab manager', 'Platform leader', 'President', 'Project Leader', 'Senior scientist/engineer']
+            else:
+                con_role=sel_role
+
+    
+            filter= (author['Campus (simple)'].isin(con_campus_sim) ) &  (author['Campus'].isin(con_campus) ) & (author['Team'].isin(con_team) ) & (author['Role'].isin(con_role) ) & (author['Status'].isin(con_status) )
+            st.write(filter)
+            filter_author=author[filter]['MatchName'].str.replace(',','').to_list()
+            st.write(filter_author)
+            #filter_author=filter_author['MatchName'].str.replace(',','').to_list() #.str.lower()            
+    
+            st.write(con_campus_sim)
+            st.write(type(con_campus_sim))
+            
+            st.write(con_role)
+            st.write(type(con_role))
+            st.write(author[filter])
+
     intramural=author[author['Campus (simple)'] == 'Biohub']
     investigator=author.loc[author['Role'] == 'Investigator']
     #author.loc[((author['Campus (simple)'] == 'Biohub') & (author['Role'] == 'Investigator')]
     df_a=author.loc[(author['Campus (simple)'] == 'Biohub') | (author['Role'] == 'Investigator') ]
 
-    # 2. Choose publication & prerpint within specific time period  # 指定时间内的pub & pre
+    # 2. Choose publication & prerpint within specific time period 
     df = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
     df.fillna('', inplace=True)
 
@@ -258,9 +325,17 @@ if status_select =='Record':
         review_list = [line.rstrip() for line in file]
 
     df=df[~df['journal'].isin(review_list)]
-    df['b_au']=df[['biohub author','possible biohub author','corresponding author']].agg(', '.join, axis=1).str.replace(', , ',', ').str.strip(', ')
+    df['b_au']=df[['biohub author','possible biohub author','corresponding author','format biohub author']].agg('; '.join, axis=1).str.replace('; ; ','; ').str.strip('; ')
 
-
+    ind_list=[]
+    for ind,i in enumerate(df['b_au']):
+        for j in i.split(';'): 
+            print(j)
+            if j.strip(' ').replace(', ',' ') in filter_author:
+                print(j)
+                ind_list.append(ind)
+    df=df.iloc[ind_list,:]
+    
     # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后。换成date
     preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
     preprint = df[df['journal'].isin(preprint_list)]
@@ -300,6 +375,7 @@ if status_select =='Record':
             else:
                 p1 +='- **'+row['b_au']+'**\n\n  '+row['title']+' doi: '+str(row['doi'])+'\n'
         
+        p1=p1.replace('; ; ','; ')
         st.markdown(p1)    
 
         st.download_button(label='Download Report',data=p1,file_name='Report.md')
@@ -314,8 +390,8 @@ if status_select =='Record':
         df2.iloc[1,1]= p1_pre.shape[0]
         df2.iloc[2,1]=df2.iloc[0,1]+df2.iloc[1,1]
 
-        df2.iloc[0,0]=p1_pub[( p1_pub['biohub author']!='') | ( p1_pub['possible biohub author']!='')].shape[0]
-        df2.iloc[1,0]=p1_pre[( p1_pre['biohub author']!='') | ( p1_pre['possible biohub author']!='')].shape[0]
+        df2.iloc[0,0]=p1_pub[( p1_pub['format biohub author']!='') | ( p1_pub['biohub author']!='') | ( p1_pub['possible biohub author']!='')].shape[0]
+        df2.iloc[1,0]=p1_pre[( p1_pub['format biohub author']!='') | ( p1_pre['biohub author']!='') | ( p1_pre['possible biohub author']!='')].shape[0]
         df2.iloc[2,0]=df2.iloc[0,0]+df2.iloc[1,0]
 
 
