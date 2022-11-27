@@ -1,13 +1,10 @@
-
-        
 # streamlit run web.py --global.dataFrameSerialization="legacy"
-
-
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode,  DataReturnMode, JsCode
 import all_function as af
-import re
+from docx import Document
+import io
 
 st.sidebar.image("logo.png", width=200)
 
@@ -18,13 +15,10 @@ status_select = st.sidebar.selectbox(
     )
 
 
-
-
 #st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 
 if status_select == 'Home':
 
-    
     st.header('Biohub publication search result.')
 
     # add_selectbox = st.sidebar.selectbox(
@@ -75,8 +69,7 @@ if status_select == 'Home':
 
     df=table_select(table_option)
 
-
-    col1, col2 = st.columns(2) #[3, 1]
+    col1, col2 = st.columns(2)
     with col1:
         #### add search bar
         search = st.text_input('Enter search words: (Case Ignore)')
@@ -88,7 +81,6 @@ if status_select == 'Home':
                             .str.contains(search.lower())].index)
             df = df.iloc[list(set(ind)), :]
             reload_data = True
-
 
     #####
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -127,8 +119,7 @@ if status_select == 'Home':
                 df.to_csv('database/'+table_option+'.csv', encoding='utf-8-sig', index=False)
                 
             st.write('Edit successful!')
-
-
+            
 
     #### 2) compare & detail function
     st.subheader('Detail & Compare Records')
@@ -152,8 +143,6 @@ if status_select == 'Home':
                                 enable_enterprise_modules=True)  # fit_columns_on_grid_load=True
 
 
-
-
     if len(sel_row) == 1:
         st.json(sel_row[0])
 
@@ -168,7 +157,6 @@ if status_select == 'Home':
             st.subheader('Possible Match Result')
             dmatch=dmatch.transpose()
             compre_sel(dmatch)
-
 
             m = dmatch.shape[1]
             if m==2 or m==3:
@@ -220,7 +208,6 @@ if status_select == 'Home':
 
 
             dmatch = pd.DataFrame()
-
 
 
     if len(sel_row) > 1:
@@ -302,7 +289,7 @@ if status_select =='Record':
             filter= (author['Campus (simple)'].isin(con_campus_sim) )&  (author['Campus'].isin(con_campus) )& (author['Role'].isin(con_role) )  & (author['Status'].isin(con_status) ) & (author['Team'].isin(con_team) )
             
             fauthor=author[filter]  # author table after filter 
-            fauthor_list=fauthor['MatchName'].str.replace(',','').to_list()  #.str.lower()            
+            fauthor_list=fauthor['MatchName'].str.replace(',','').to_list()          
 
     # intramural=author[author['Campus (simple)'] == 'Biohub']
     # investigator=author.loc[author['Role'] == 'Investigator']
@@ -338,7 +325,7 @@ if status_select =='Record':
     
     #df['b_au']=df[['biohub author','possible biohub author','format biohub author']].agg('; '.join, axis=1)#.str.replace('; ; ; ','; ').str.replace('; ; ','; ').str.strip('; ')
     #df['b_au']=df[['possible biohub author','possible biohub author','format biohub author','corresponding author']].agg('; '.join, axis=1)
-    df['b_au']=df['biohub author']
+    df['b_au']=df['biohub author']  # unique of b_au
 
     ind_list=[]
     biohub_staff_ind=[]
@@ -357,9 +344,8 @@ if status_select =='Record':
     biohub_staff_ind=[*set(biohub_staff_ind)]
         
     df=df.iloc[ind_list,:]
-    st.write(df)
 
-    # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后。换成date
+    # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后换成date
     preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
     preprint = df[df['journal'].isin(preprint_list)]
     publication = df[~df['journal'].isin(preprint_list)]
@@ -374,36 +360,61 @@ if status_select =='Record':
     tab1, tab2, tab3 = st.tabs(["summary report", "summary table", "author table"])
     
     with tab1:
-        
-        p1="#### Biohub intramural research program – Papers published and preprints first-deposited \n\nIncludes papers, conference proceedings, and preprints published or first-deposited since the last Biohub All-Hands meeting that cite Biohub affiliation or funding and that include a Biohub employee as a co-author (we may easily have missed something, so please feel free to send Bill Burkholder any additions or corrections)\n"
-        
-        # Record: Publication
-        p1 +='##### Papers (Research articles, methods papers, reviews, etc.) and conference proceedings:\n'
-        for ind,row in p1_pub.iterrows():
-            # check unique of b_au
-            if row['corresponding author'] !='':
-                p1 +='- **'+row['b_au']+" of "+row['corresponding author']+"’s lab at "+', '.join(row['corresponding author institution'].split(',')[0:2])+'**\n\n  '+row['title']+' PMID: '+str(row['pmid'])+'\n'
-            else:
-                p1 +='- **'+row['b_au']+'**\n\n  '+row['title']+' PMID: '+str(row['pmid'])+'\n'
+        p1 ='##### Papers (Research articles, methods papers, reviews, etc.) and conference proceedings:\n  '
 
-        # Record: Prerprint
+        doc = Document()
+        title = doc.add_heading("Biohub intramural research program – Papers published and preprints first-deposited",0)
+        #para = doc.add_paragraph("Includes papers, conference proceedings, and preprints published or first-deposited since the last Biohub All-Hands meeting that cite Biohub affiliation or funding and that include a Biohub employee as a co-author (we may easily have missed something, so please feel free to send Bill Burkholder any additions or corrections)\n")
+        para = doc.add_paragraph()
+        para.add_run("Includes papers, conference proceedings, and preprints published or first-deposited since the last Biohub All-Hands meeting that cite Biohub affiliation or funding and that include a Biohub employee as a co-author (we may easily have missed something, so please feel free to send Bill Burkholder any additions or corrections)\n").italic = True
+        
+        title = doc.add_heading('Papers (Research articles, methods papers, reviews, etc.) and conference proceedings\n\n  ', 2)  
+        for ind,row in p1_pub.iterrows():
+            intro=row['b_au']+" of "+row['corresponding author']+"’s lab at "+', '.join(row['corresponding author institution'].split(',')[0:2])
+            detail=row['title']+' PMID: '+str(row['pmid'])+'\n'
+            if row['corresponding author'] !='':
+                p1 +='- **'+intro+'**\n\n    '+detail
+                para = doc.add_paragraph()
+                para.add_run(intro).bold = True
+                para.add_run('\n\n      '+detail)  
+            else:
+                p1 +='- **'+row['b_au']+'**\n\n    '+detail
+                para = doc.add_paragraph()
+                para.add_run(row['b_au']).bold = True
+                para.add_run('\n\n      '+detail)
+
+        title = doc.add_heading("Preprints\n\n  ",2)
         p1 += "\n\n##### Preprints\n"
         for ind,row in p1_pre.iterrows():
-            # check unique of b_au
+            intro=row['b_au']+" of "+row['corresponding author']+"’s lab at "+', '.join(row['corresponding author institution'].split(',')[0:2])
+            detail2=row['title']+' doi: '+str(row['doi'])+'\n'
             if row['corresponding author'] !='':
-                p1 +='- **'+row['b_au']+" of "+row['corresponding author']+"’s lab at "+', '.join(row['corresponding author institution'].split(',')[0:2])+'**\n\n  '+row['title']+' doi: '+str(row['doi'])+'\n'
+                p1 +='- **'+intro+'**\n\n    '+detail2
+                para = doc.add_paragraph()
+                para.add_run(intro).bold = True
+                para.add_run('\n\n      '+detail2)  
             else:
-                p1 +='- **'+row['b_au']+'**\n\n  '+row['title']+' doi: '+str(row['doi'])+'\n'
-        
-        p1=p1.replace('; ; ','; ')
-        st.markdown(p1)    
-
-        st.download_button(label='Download Report',data=p1,file_name='Report.md')
-
-    with tab2:
-        st.header("summary table")
-        # st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
+                p1 +='- **'+row['b_au']+'**\n\n    '+detail2
+                para = doc.add_paragraph()
+                para.add_run(row['b_au']).bold = True
+                para.add_run('\n\n      '+detail2)
     
+        p1=p1.replace('; ; ','; ')
+        st.markdown("### Biohub intramural research program – Papers published and preprints first-deposited \n\nIncludes papers, conference proceedings, and preprints published or first-deposited since the last Biohub All-Hands meeting that cite Biohub affiliation or funding and that include a Biohub employee as a co-author (we may easily have missed something, so please feel free to send Bill Burkholder any additions or corrections)\n")
+        
+        col1, col2 = st.columns([3,2],gap = "small")
+        with col1:
+            bio = io.BytesIO()
+            doc.save(bio)
+            if doc:
+                st.download_button(label="Download docx version",data=bio.getvalue(),
+                    file_name="Report.docx",mime="docx")
+        
+        with col2:    
+            st.download_button(label="Download md version",data=p1,file_name="Report.md",)
+        st.markdown(p1)  
+
+    with tab2:    
         df2=pd.DataFrame(columns =['Biohub staff authors', 'All authors'],index = ['Papers (Research articles, methods papers, reviews, etc.) and conference proceedings', 'Preprints', 'Total'])
 
         df2.iloc[0,1]= len(p1_pub.index)
@@ -415,15 +426,11 @@ if status_select =='Record':
 
         df2.iloc[2,0]=df2.iloc[0,0]+df2.iloc[1,0]
 
-        st.markdown("#### Papers published and preprints first-deposited \n")
-        st.write(df2)
-        
+        st.markdown("### Papers published and preprints first-deposited \n")
         st.download_button(label='Download Report',data=df2.to_csv().encode('utf-8'),file_name='Overall Report.csv')
-
+        st.write(df2)
+             
     with tab3:
-        st.header("Individual Author Report ( need to check dataset) ")
-        
-        #p3=pd.DataFrame(columns =['Total articles as corresponding author','Qualifying articles as corresponding author','Qualifying articles as corresponding author with preprints','Compliance'],index = author['MatchName'])
         p3=pd.DataFrame(index = author['MatchName'])
         p3.index.name = None
 
@@ -432,7 +439,7 @@ if status_select =='Record':
         p3=pd.merge(p3,c1,how='left',left_index=True,right_index=True)
 
         # column 2
-        ## Exclude 'review list'
+            ## Exclude 'review list'
         with open('database/list of review journals.txt') as file:
             review_list = [line.rstrip() for line in file]
 
@@ -445,10 +452,13 @@ if status_select =='Record':
         c3=df.loc[  (df['corresponding author']!='') & (df['confirm preprint doi']!='') ,['title','journal','corresponding author']].set_index(['title','journal'])['corresponding author'].str.split("; ", expand=True).stack().reset_index(drop=True, level=-1).reset_index().groupby([0]).size().rename("Qualifying articles as corresponding author with preprints")
         p3=pd.merge(p3,c3,how='left',left_index=True,right_index=True)
 
-        p3.iloc[:,0:3]=p3.fillna(0).iloc[:,0:3].astype('Int64')#,errors='ignore')
+        ## fill na value with 0
+        p3.iloc[:,0:3]=p3.fillna(0).iloc[:,0:3].astype('Int64')
                 
         # column 4
         p3['Compliance']=100*p3['Qualifying articles as corresponding author with preprints']/p3['Qualifying articles as corresponding author']
         
-        st.write(p3)
+        st.markdown("### Individual Author Report \n")
         st.download_button(label='Download Report',data=p3.to_csv().encode('utf-8'),file_name='Individual Author Report.csv')
+        st.write(p3)
+        
