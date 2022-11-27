@@ -906,6 +906,29 @@ def authormatch_pub(df):
     df['format biohub author']=df['format biohub author'].str.strip('; ')
     return df
 
+## author match. for single name input
+# return old_name, format_name,possible percent
+def authormatch(name):
+    test=pd.read_csv('database/biohub author combination.csv', encoding='utf-8-sig')
+    degree='no'
+    format_name=re.sub(r'[^\w]', ' ', name.strip('#'))
+    format_name=format_name.replace('  ',' ').strip(' ').replace('-','').lower()
+    
+    if name=='':
+        return name,format_name,degree
+    for ind2 in test.index:
+        if format_name in test.loc[ind2,'combination_23']:
+            format_name=test.loc[ind2,'MatchName']
+            degree='yes'
+            return name,format_name,degree
+        
+        if format_name in test.loc[ind2,'combination_01']:
+            format_name=test.loc[ind2,'MatchName']
+            degree='maybe'
+            return name,format_name,degree
+        
+    return name,name,degree
+
 
 ## 5: combine above  
 # pre-requirement: create a folder to save everyday search result

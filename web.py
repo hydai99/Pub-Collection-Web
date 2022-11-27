@@ -6,6 +6,8 @@
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode,  DataReturnMode, JsCode
+import all_function as af
+import re
 
 st.sidebar.image("logo.png", width=200)
 
@@ -243,10 +245,11 @@ if status_select =='Record':
     st.write('The time period you choose is: '+str(start_date)+' ~ '+str(end_date))
 
     ##### coding
-    # 1. Select author list   # 需要确定下
+    # 1. Select author list 
     author=pd.read_csv('database/Biohub authors.csv', encoding='utf-8-sig')  #  biohub author
-
-    filter_author=author['MatchName'].str.replace(',','').to_list()
+    author['Team']=author['Team'].fillna('NA')
+    author=author.fillna('')
+    fauthor_list=author['MatchName'].str.replace(',','').to_list()
 
     with st.expander("advance filter"):
         cola, colb = st.columns(2)
@@ -276,7 +279,6 @@ if status_select =='Record':
             else:
                 con_campus_sim=sel_campus_sim
                 
-                
             if sel_campus==[] or sel_campus==['All']:
                 con_campus=['UCSF','UCSF/Gladstone', 'Stanford', 'Berkeley','Berkeley/LBNL', 'Biohub']
             else:
@@ -297,62 +299,80 @@ if status_select =='Record':
             else:
                 con_role=sel_role
 
-    
-            filter= (author['Campus (simple)'].isin(con_campus_sim) ) &  (author['Campus'].isin(con_campus) ) & (author['Team'].isin(con_team) ) & (author['Role'].isin(con_role) ) & (author['Status'].isin(con_status) )
-            st.write(filter)
-            filter_author=author[filter]['MatchName'].str.replace(',','').to_list()
-            st.write(filter_author)
-            #filter_author=filter_author['MatchName'].str.replace(',','').to_list() #.str.lower()            
-    
-            st.write(con_campus_sim)
-            st.write(type(con_campus_sim))
+            filter= (author['Campus (simple)'].isin(con_campus_sim) )&  (author['Campus'].isin(con_campus) )& (author['Role'].isin(con_role) )  & (author['Status'].isin(con_status) ) & (author['Team'].isin(con_team) )
             
-            st.write(con_role)
-            st.write(type(con_role))
-            st.write(author[filter])
+            fauthor=author[filter]  # author table after filter 
+            fauthor_list=fauthor['MatchName'].str.replace(',','').to_list()  #.str.lower()            
 
-    intramural=author[author['Campus (simple)'] == 'Biohub']
-    investigator=author.loc[author['Role'] == 'Investigator']
-    #author.loc[((author['Campus (simple)'] == 'Biohub') & (author['Role'] == 'Investigator')]
-    df_a=author.loc[(author['Campus (simple)'] == 'Biohub') | (author['Role'] == 'Investigator') ]
+    # intramural=author[author['Campus (simple)'] == 'Biohub']
+    # investigator=author.loc[author['Role'] == 'Investigator']
+    # df_a=author.loc[(author['Campus (simple)'] == 'Biohub') | (author['Role'] == 'Investigator') ]
+    biohub_staff_author=author[author['Campus (simple)'] == 'Biohub']['MatchName'].str.replace(',','').to_list()
 
     # 2. Choose publication & prerpint within specific time period 
     df = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
-    df.fillna('', inplace=True)
-
-    # 2.1 Exclude 'review list'
-    with open('database/list of review journals.txt') as file:
-        review_list = [line.rstrip() for line in file]
-
-    df=df[~df['journal'].isin(review_list)]
-    df['b_au']=df[['biohub author','possible biohub author','corresponding author','format biohub author']].agg('; '.join, axis=1).str.replace('; ; ','; ').str.strip('; ')
+    
+    df['epost date'] = pd.to_datetime(df['epost date'])  
+    condition = (df['epost date'] >= start) & (df['epost date'] <= end) 
+    df=df.loc[condition]
+    
+    def format_col(df,col_name):
+        # format column and replace original
+        df=df.fillna('').reset_index(drop=True)
+        
+        # format 'corresponding author' column and replace original
+        for ind,i in enumerate(df[col_name]):
+            if i == '':
+                continue 
+            i_list=i.split(';')
+            res=[]
+            for j in i_list:  
+                old_name,new_name,prob=af.authormatch(j)
+                res.append(new_name)
+            df.loc[ind,col_name] = '; '.join(m for m in res)
+        df.fillna('', inplace=True)
+        return df
+    
+    df=format_col(df,col_name='corresponding author') 
+    df=format_col(df,col_name='biohub author')
+    
+    #df['b_au']=df[['biohub author','possible biohub author','format biohub author']].agg('; '.join, axis=1)#.str.replace('; ; ; ','; ').str.replace('; ; ','; ').str.strip('; ')
+    #df['b_au']=df[['possible biohub author','possible biohub author','format biohub author','corresponding author']].agg('; '.join, axis=1)
+    df['b_au']=df['biohub author']
 
     ind_list=[]
+    biohub_staff_ind=[]
     for ind,i in enumerate(df['b_au']):
+        i='; '.join(set([j.strip() for j in i.split(';') if j]))
+        df.loc[ind,'b_au']=i
         for j in i.split(';'): 
-            print(j)
-            if j.strip(' ').replace(', ',' ') in filter_author:
-                print(j)
+            if j.strip(' ').replace(', ',' ') in fauthor_list:  # only return people who is in filter list
+                # Problem: if there are some author not in 'biohub author.xlsx', it will not show theirs publications
                 ind_list.append(ind)
+            if j.strip(' ').replace(', ',' ') in biohub_staff_author:
+                biohub_staff_ind.append(ind)
+                
+    ## remove duplicate index in list
+    ind_list=[*set(ind_list)]
+    biohub_staff_ind=[*set(biohub_staff_ind)]
+        
     df=df.iloc[ind_list,:]
-    
+    st.write(df)
+
     # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后。换成date
     preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
     preprint = df[df['journal'].isin(preprint_list)]
     publication = df[~df['journal'].isin(preprint_list)]
 
-    df['epost date'] = pd.to_datetime(df['epost date'])  
-
-
-    pre_condition = (df['epost date'] >= start) & (df['epost date'] <= end) & (df['journal'].isin(preprint_list))
+    pre_condition = (df['journal'].isin(preprint_list))
     p1_pre=df.loc[pre_condition]
 
-    pub_condition = (df['epost date'] >= start) & (df['epost date'] <= end) & (~df['journal'].isin(preprint_list))
+    pub_condition = (~df['journal'].isin(preprint_list))
     p1_pub=df.loc[pub_condition]
-
+    
     ########
     tab1, tab2, tab3 = st.tabs(["summary report", "summary table", "author table"])
-
+    
     with tab1:
         
         p1="#### Biohub intramural research program – Papers published and preprints first-deposited \n\nIncludes papers, conference proceedings, and preprints published or first-deposited since the last Biohub All-Hands meeting that cite Biohub affiliation or funding and that include a Biohub employee as a co-author (we may easily have missed something, so please feel free to send Bill Burkholder any additions or corrections)\n"
@@ -382,18 +402,18 @@ if status_select =='Record':
 
     with tab2:
         st.header("summary table")
-    # st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
+        # st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
     
         df2=pd.DataFrame(columns =['Biohub staff authors', 'All authors'],index = ['Papers (Research articles, methods papers, reviews, etc.) and conference proceedings', 'Preprints', 'Total'])
 
-        df2.iloc[0,1]= p1_pub.shape[0]
-        df2.iloc[1,1]= p1_pre.shape[0]
+        df2.iloc[0,1]= len(p1_pub.index)
+        df2.iloc[1,1]= len(p1_pre.index)
         df2.iloc[2,1]=df2.iloc[0,1]+df2.iloc[1,1]
 
-        df2.iloc[0,0]=p1_pub[( p1_pub['format biohub author']!='') | ( p1_pub['biohub author']!='') | ( p1_pub['possible biohub author']!='')].shape[0]
-        df2.iloc[1,0]=p1_pre[( p1_pub['format biohub author']!='') | ( p1_pre['biohub author']!='') | ( p1_pre['possible biohub author']!='')].shape[0]
-        df2.iloc[2,0]=df2.iloc[0,0]+df2.iloc[1,0]
+        df2.iloc[0,0]=len([i for i in biohub_staff_ind if i in p1_pub.index])
+        df2.iloc[1,0]=len([i for i in biohub_staff_ind if i in p1_pre.index])
 
+        df2.iloc[2,0]=df2.iloc[0,0]+df2.iloc[1,0]
 
         st.markdown("#### Papers published and preprints first-deposited \n")
         st.write(df2)
@@ -402,18 +422,33 @@ if status_select =='Record':
 
     with tab3:
         st.header("Individual Author Report ( need to check dataset) ")
-    
-        df3=df.iloc[df[df['b_au']!=''].index,:]
-        df3['b_au'] = df3['b_au'].map(lambda x:x.split(', '))  # Q: split by '; '
-        df3=df3.explode('b_au')
-        t=pd.DataFrame(df3.groupby('b_au')['record id'].count()).rename(columns={'record id':'Compliance'}) 
-        t.index.name = None
-        #t=t[t.index.isin(author['MatchName'])]
-
-        p3=pd.DataFrame(columns =['Total articles as corresponding author','Qualifying articles as corresponding author','Qualifying articles as corresponding author with preprints','Compliance'],index = author['MatchName'])
+        
+        #p3=pd.DataFrame(columns =['Total articles as corresponding author','Qualifying articles as corresponding author','Qualifying articles as corresponding author with preprints','Compliance'],index = author['MatchName'])
+        p3=pd.DataFrame(index = author['MatchName'])
         p3.index.name = None
-        p3['Compliance'].fillna(t['Compliance'])
+
+        # column 1
+        c1=df.loc[df['corresponding author']!='',['title','journal','corresponding author']].set_index(['title','journal'])['corresponding author'].str.split("; ", expand=True).stack().reset_index(drop=True, level=-1).reset_index().groupby([0]).size().rename("Total articles as corresponding author")
+        p3=pd.merge(p3,c1,how='left',left_index=True,right_index=True)
+
+        # column 2
+        ## Exclude 'review list'
+        with open('database/list of review journals.txt') as file:
+            review_list = [line.rstrip() for line in file]
+
+        df=df[~df['journal'].isin(review_list)]
+        
+        c2=df.loc[df['corresponding author']!='',['title','journal','corresponding author']].set_index(['title','journal'])['corresponding author'].str.split("; ", expand=True).stack().reset_index(drop=True, level=-1).reset_index().groupby([0]).size().rename("Qualifying articles as corresponding author")
+        p3=pd.merge(p3,c2,how='left',left_index=True,right_index=True)
+
+        # column 3
+        c3=df.loc[  (df['corresponding author']!='') & (df['confirm preprint doi']!='') ,['title','journal','corresponding author']].set_index(['title','journal'])['corresponding author'].str.split("; ", expand=True).stack().reset_index(drop=True, level=-1).reset_index().groupby([0]).size().rename("Qualifying articles as corresponding author with preprints")
+        p3=pd.merge(p3,c3,how='left',left_index=True,right_index=True)
+
+        p3.iloc[:,0:3]=p3.fillna(0).iloc[:,0:3].astype('Int64')#,errors='ignore')
+                
+        # column 4
+        p3['Compliance']=100*p3['Qualifying articles as corresponding author with preprints']/p3['Qualifying articles as corresponding author']
         
         st.write(p3)
-        
         st.download_button(label='Download Report',data=p3.to_csv().encode('utf-8'),file_name='Individual Author Report.csv')
