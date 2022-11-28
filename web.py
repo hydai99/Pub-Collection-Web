@@ -59,7 +59,6 @@ if status_select == 'Home':
     with left:
         table_option = st.selectbox(
             'Which table you would like to check?',
-            #('matched pub-preprint', 'basedb', 'changedb (old version)', 'changedb (new version)', 'deletedb'))
             ('basedb', 'changedb (old version)', 'changedb (new version)', 'matched pub-preprint','deletedb','publication non-preprint'))
     with right:
         format_select = st.radio(
@@ -192,9 +191,8 @@ if status_select == 'Home':
                         st.write('Done')
 
                         import time
-                        time.sleep(1)
-
-                        pyautogui.hotkey("ctrl","F5")
+                        time.sleep(1)                 # time for process
+                        pyautogui.hotkey("ctrl","F5") # simulate user press 'ctrl+F5' which equal to refresh page.
 
                 change(do_action1, 1)
                 change(do_action2, 2)
@@ -205,9 +203,7 @@ if status_select == 'Home':
             if m>=4:
                 st.write('sorry please change manually.')
 
-
             dmatch = pd.DataFrame()
-
 
     if len(sel_row) > 1:
         sel_df = pd.DataFrame(sel_row).transpose()
@@ -302,9 +298,7 @@ if status_select =='Record':
     df['date'] = pd.to_datetime(df['date'])  
     condition = (df['date'] >= start) & (df['date'] <= end) 
     df=df.loc[condition]
-    
-    st.write(df.shape)
-    
+
     def format_col(df,col_name):
         # format column and replace original
         df=df.fillna('').reset_index(drop=True)
@@ -329,13 +323,14 @@ if status_select =='Record':
     #df['b_au']=df[['possible biohub author','possible biohub author','format biohub author','corresponding author']].agg('; '.join, axis=1)
     df['b_au']=df['biohub author']  # unique of b_au
 
+    ## df: only return people who is in filter list / or 'biohub author.xlsx' file    
     ind_list=[]
     biohub_staff_ind=[]
     for ind,i in enumerate(df['b_au']):
         i='; '.join(set([j.strip() for j in i.split(';') if j]))
         df.loc[ind,'b_au']=i
         for j in i.split(';'): 
-            if j.strip(' ').replace(', ',' ') in fauthor_list:  # only return people who is in filter list
+            if j.strip(' ').replace(', ',' ') in fauthor_list:  
                 # Problem: if there are some author not in 'biohub author.xlsx', it will not show theirs publications
                 ind_list.append(ind)
             if j.strip(' ').replace(', ',' ') in biohub_staff_author:
@@ -347,11 +342,11 @@ if status_select =='Record':
         
     df=df.iloc[ind_list,:]
 
-    # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后换成date
+    # 2.2 divided into two categories: publication and preprint
     
     preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
-    preprint = df[df['journal'].isin(preprint_list)]
-    publication = df[~df['journal'].isin(preprint_list)]
+    #preprint = df[df['journal'].isin(preprint_list)]
+    #publication = df[~df['journal'].isin(preprint_list)]
 
     pre_condition = (df['journal'].isin(preprint_list))
     p1_pre=df.loc[pre_condition]
@@ -359,6 +354,7 @@ if status_select =='Record':
     pub_condition = (~df['journal'].isin(preprint_list))
     p1_pub=df.loc[pub_condition]
     
+
     ########
     tab1, tab2, tab3 = st.tabs(["summary report", "summary table", "author table"])
     
@@ -417,8 +413,9 @@ if status_select =='Record':
             st.download_button(label="Download md version",data=p1,file_name="Report.md",)
         st.markdown(p1)  
 
-    with tab2:    
-        df2=pd.DataFrame(columns =['Biohub staff authors', 'All authors'],index = ['Papers (Research articles, methods papers, reviews, etc.) and conference proceedings', 'Preprints', 'Total'])
+    with tab2: 
+           
+        df2=pd.DataFrame(columns =['Biohub staff authors', 'All authors'],index = ['Papers and conference proceedings', 'Preprints', 'Total'])
 
         df2.iloc[0,1]= len(p1_pub.index)
         df2.iloc[1,1]= len(p1_pre.index)
@@ -431,7 +428,10 @@ if status_select =='Record':
 
         st.markdown("### Papers published and preprints first-deposited \n")
         st.download_button(label='Download Report',data=df2.to_csv().encode('utf-8'),file_name='Overall Report.csv')
-        st.write(df2)
+        st.write("This data is based on 'biohub author.xlsx' list & filter condition. It will only count papers who's author belong to the list.")
+        st.table(df2)
+        st.write("Note: Papers -> Research articles, methods papers, reviews, etc.")
+        
              
     with tab3:
         p3=pd.DataFrame(index = author['MatchName'])
@@ -461,7 +461,29 @@ if status_select =='Record':
         # column 4
         p3['Compliance']=100*p3['Qualifying articles as corresponding author with preprints']/p3['Qualifying articles as corresponding author']
         
+        p3.reset_index(inplace=True)
+        p3.rename(columns={'index':'author name'})
         st.markdown("### Individual Author Report \n")
         st.download_button(label='Download Report',data=p3.to_csv().encode('utf-8'),file_name='Individual Author Report.csv')
-        st.write(p3)
-        
+        st.write("this data is based on 'biohub author.xlsx' list & filter condition. It will only count papers who's author belong to the list.")
+        st.table(p3)
+        # st.markdown("""Column: \n
+        #         1. Name\n 
+        #         2. Total articles as corresponding author \n
+        #         3. Qualifying articles as corresponding author \n
+        #         4. Qualifying articles as corresponding author with preprints \n
+        #         5. Compliance
+        #         """)
+        # builder = GridOptionsBuilder.from_dataframe(p3)
+        # builder.configure_default_column(wrapText=True, enableRowGroup=True,
+        #                             aggFunc='sum', sizeColumnsToFit=True, autoHeight=True)
+        # builder.configure_column("index", pinned='left',maxWidth=200)
+        # go = builder.build()
+        # AgGrid(p3, gridOptions=go,height=800)
+
+        # gb_sel.configure_default_column(autoHeight=True, groupable=True,
+        #                                 wrapText=True,  value=True, enableRowGroup=True, aggFunc='sum')
+        # gb_sel.configure_columns(
+        #     column_names=p3.columns, maxWidth=1000/p3.shape[1])
+        # grid_table_sel = AgGrid(p3, go, update_mode=GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED,
+        #                         enable_enterprise_modules=True)  # fit_columns_on_grid_load=True

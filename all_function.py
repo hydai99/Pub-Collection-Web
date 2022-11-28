@@ -117,7 +117,7 @@ def BioMedrxiv_Search2(start_date,end_date,keyword):
 			full_records_df.loc[i,'type']=data['type']
 			full_records_df.loc[i,'abstract']=data['abstract']
 			full_records_df.loc[i,'published or not']=data['published'] # NA
-			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%M-%d').strftime('%m/%d/%Y')
+			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%m-%d').strftime('%m/%d/%Y')
 			full_records_df.loc[i,'server']=data['server']
 
 			if full_records_df.loc[i,'published or not'] != 'NA':
