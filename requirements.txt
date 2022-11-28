@@ -12,3 +12,4 @@ pillow
 lxml
 jellyfish
 python-docx
+xlrd >= 1.0.0
