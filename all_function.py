@@ -108,21 +108,25 @@ def BioMedrxiv_Search2(start_date,end_date,keyword):
 				data=requests.get(url=paper_api).json()['collection'][-1]
 			except:
 				continue
+
 			full_records_df.loc[i,'title']=data['title']
 			full_records_df.loc[i,'authors2']=data['authors']
 			full_records_df.loc[i,'corresponding author']=data['author_corresponding']
 			full_records_df.loc[i,'corresponding author institution']=data['author_corresponding_institution']
 			full_records_df.loc[i,'version number']=data['version']
 			full_records_df.loc[i,'type']=data['type']
-			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%M-%d').strftime('%m/%d/%Y')
 			full_records_df.loc[i,'abstract']=data['abstract']
 			full_records_df.loc[i,'published or not']=data['published'] # NA
+			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%M-%d').strftime('%m/%d/%Y')
+			full_records_df.loc[i,'server']=data['server']
+
 			if full_records_df.loc[i,'published or not'] != 'NA':
-				pub_api='https://api.biorxiv.org/pubs/'+full_records_df.loc[i,'journal']+'/'+full_records_df.loc[i,'doi']+'/na/JSON'
+				pub_api='https://api.biorxiv.org/pubs/'+full_records_df.loc[i,'server']+'/'+full_records_df.loc[i,'doi']+'/na/JSON'
 				data2=requests.get(url=pub_api).json()['collection'][-1]
+				
 				full_records_df.loc[i,'confirm published doi']=data2['published_doi']
-				#full_records_df.loc[i,'published_journal']=data['published_journal']
-				#full_records_df.loc[i,'published_date']=data['published_date']
+				# full_records_df.loc[i,'published_journal']=data['published_journal']
+				# full_records_df.loc[i,'published_date']=data['published_date']
 			else:
 				full_records_df.loc[i,'published_doi']='No yet.'
 				
@@ -949,12 +953,10 @@ def Bibliometrics_Collect(start,
 	df3 = Pubmed_search2(start_date=start, end_date=end,TERM='(zuckerb* AND biohub) OR "cz biohub" OR "czi biohub"',save_AuthorInfo=True)
 	df4 = Pubmed_search_author(start_date=end,end_date=end)
 
-	df = pd.concat([df1, df2, df3,df4])
+	df34=pd.concat([df3,df4])
+	df34=df34.drop_duplicates(subset='doi', keep="last")
+	df = pd.concat([df1, df2, df34])
  
-	try:
-		df=df.drop_duplicates(subset='pmid', keep="last")
-	except:
-		pass
 	df['record change number'] = 0
 
 	try:

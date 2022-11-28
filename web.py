@@ -14,7 +14,6 @@ status_select = st.sidebar.selectbox(
         ("Home", "Record")
     )
 
-
 #st.set_page_config(page_title='Biohub: Publication & Preprint',layout='wide')
 
 if status_select == 'Home':
@@ -299,9 +298,12 @@ if status_select =='Record':
     # 2. Choose publication & prerpint within specific time period 
     df = pd.read_csv('database/basedb.csv', encoding='utf-8-sig')
     
-    df['epost date'] = pd.to_datetime(df['epost date'])  
-    condition = (df['epost date'] >= start) & (df['epost date'] <= end) 
+    # need to check date. many records have been filtered. don't know why yet :(
+    df['date'] = pd.to_datetime(df['date'])  
+    condition = (df['date'] >= start) & (df['date'] <= end) 
     df=df.loc[condition]
+    
+    st.write(df.shape)
     
     def format_col(df,col_name):
         # format column and replace original
@@ -346,6 +348,7 @@ if status_select =='Record':
     df=df.iloc[ind_list,:]
 
     # 2.2 divided into two categories: publication and preprint #得把date格式改一下然后换成date
+    
     preprint_list=['biorxiv','bioRxiv','medrxiv','medRxiv','arxiv','arXiv']
     preprint = df[df['journal'].isin(preprint_list)]
     publication = df[~df['journal'].isin(preprint_list)]
