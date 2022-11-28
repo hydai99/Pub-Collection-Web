@@ -104,28 +104,32 @@ def BioMedrxiv_Search2(start_date,end_date,keyword):
   
 		for i in full_records_df.index:
 			paper_api='https://api.biorxiv.org/details/'+full_records_df.loc[i,'journal'].lower()+'/'+full_records_df.loc[i,'doi']+'/na/JSON'
-			#print(paper_api)
-			data=requests.get(url=paper_api).json()['collection'][-1]
+			try:
+				data=requests.get(url=paper_api).json()['collection'][-1]
+			except:
+				continue
+
 			full_records_df.loc[i,'title']=data['title']
 			full_records_df.loc[i,'authors2']=data['authors']
 			full_records_df.loc[i,'corresponding author']=data['author_corresponding']
 			full_records_df.loc[i,'corresponding author institution']=data['author_corresponding_institution']
 			full_records_df.loc[i,'version number']=data['version']
 			full_records_df.loc[i,'type']=data['type']
-			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%M-%d').strftime('%m/%d/%Y')
 			full_records_df.loc[i,'abstract']=data['abstract']
 			full_records_df.loc[i,'published or not']=data['published'] # NA
+			full_records_df.loc[i,'epost date']=datetime.datetime.strptime(data['date'], '%Y-%m-%d').strftime('%m/%d/%Y')
+			full_records_df.loc[i,'server']=data['server']
+
 			if full_records_df.loc[i,'published or not'] != 'NA':
-				pub_api='https://api.biorxiv.org/pubs/'+full_records_df.loc[i,'journal']+'/'+full_records_df.loc[i,'doi']+'/na/JSON'
+				pub_api='https://api.biorxiv.org/pubs/'+full_records_df.loc[i,'server']+'/'+full_records_df.loc[i,'doi']+'/na/JSON'
 				data2=requests.get(url=pub_api).json()['collection'][-1]
+				
 				full_records_df.loc[i,'confirm published doi']=data2['published_doi']
-				#full_records_df.loc[i,'published_journal']=data['published_journal']
-				#full_records_df.loc[i,'published_date']=data['published_date']
+				# full_records_df.loc[i,'published_journal']=data['published_journal']
+				# full_records_df.loc[i,'published_date']=data['published_date']
 			else:
 				full_records_df.loc[i,'published_doi']='No yet.'
 				
-		#full_records_df.loc[:,'save datetime'] = datetime.datetime.now().strftime('%m/%d/%Y') # when we save it
-
 		for row_number,paper_url in enumerate(full_records_df.url):
 			articles2 = bs(requests.post(paper_url).text, features='html.parser') 
 			full_records_df.loc[row_number,'authors']= ("; ".join([i['content'] for i in articles2.find_all('meta', attrs={'name': 'citation_author'})]))  
@@ -149,7 +153,7 @@ def BioMedrxiv_Search2(start_date,end_date,keyword):
 			# author_aff: store all [author, aff] result
 			author_aff=[m[ind[i]+1:(ind[i+1])] if i<len(ind)-1 else m[ind[i]+1:len(m)] for i in range(len(ind))]
 
-			full_records_df.loc[row_number,'author - affiliations']=str(author_aff)
+			full_records_df.loc[row_number,'author - affiliations']=str(author_aff)[2:-2].replace("'",'')
 			for i in author_aff:
 				if ('Biohub' or 'BioHub' or 'biohub' or 'BIOHUB') in str(i):
 					full_records_df.loc[row_number,'biohub author']=i[0]
@@ -238,7 +242,7 @@ def Arxiv_Search(start_date,keyword):
 			pdf_url +=[article2.find('meta', attrs={'name': 'citation_pdf_url'})['content']]
 			doi += [article2.find('meta', attrs={'name': 'citation_doi'})['content']]
 			version += [article2.find_all('span', attrs={'class': 'arxivid'})[-1].text.replace('\n','').split(' ')[0]]
-			author_list += [article2.find('div', attrs={'class': 'authors'}).text.replace('authors:','')]
+			author_list += [article2.find('div', attrs={'class': 'authors'}).text.replace('Authors:','').replace('authors:','').replace(',',';')]
 			time.sleep(.5)
 	full_records_df = pd.DataFrame(np.column_stack([title, Epost_date,url,abstract,pdf_url,doi,version,author_list]),
 					columns=['title', 'epost date', 'url','abstract','pdf url','doi','version','authors'] )
@@ -264,12 +268,12 @@ def Pubmed_search2(start_date, end_date,TERM,save_AuthorInfo=True):
 	# parameters
 	SOURCE_DB	= 'pubmed'	 #pubmed, nuccore, nucest, nucgss, popset, protein
 	#TERM		 = '(zuckerb* AND biohub) OR "cz biohub" OR "czi biohub"' #'biohub[ad]'
- 		#TERM='(zuckerb*[Affiliation] AND biohub[Affiliation]) OR "cz biohub"[Affiliation] OR "czi biohub"[Affiliation]'
+ 	#TERM='(zuckerb*[Affiliation] AND biohub[Affiliation]) OR "cz biohub"[Affiliation] OR "czi biohub"[Affiliation]'
 	DATE_TYPE	= 'pdat'	   # Type of date used to limit a search. The allowed values vary between Entrez databases, but common values are 'mdat' (modification date), 'pdat' (publication date) and 'edat' (Entrez date). Generally an Entrez database will have only two allowed values for datetype.
 	start_date  = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y/%m/%d')
 	end_date  = datetime.datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y/%m/%d')
 	
-	SEP		  = ' ; '
+	SEP		  = '; '
 	BATCH_NUM	= 2000
 
 	def mkquery(base_url, params):
@@ -401,62 +405,63 @@ def Pubmed_search2(start_date, end_date,TERM,save_AuthorInfo=True):
 		for i in html.find('pre').string.replace('\r\n      ','').split('\r\n'):
 			if i.startswith('COIS'):
 				Articlesinfo.loc[ind,'COIS']=i.replace('COIS- ','')
+		
+	for ind,i in enumerate(AuthorInfo['affiliation']):
+		if '@' in i:
+			AuthorInfo.loc[ind,'ISEmail']='Yes'
+		else:
+			AuthorInfo.loc[ind,'ISEmail']=''
+		
+		if ('Biohub' or 'BioHub' or 'biohub' or 'BIOHUB') in i:
+			AuthorInfo.loc[ind,'ISBiohub author']='Yes'
+		else:
+			AuthorInfo.loc[ind,'ISBiohub author']=''
 
 
+	# apply standard author name.
+	# extract biohub author for each pmid. put them into right field
+	add_bha=AuthorInfo.loc[(AuthorInfo['ISBiohub author']=='Yes'),['pmid','name','affiliation']]  # biohub author  
+	add_coa=AuthorInfo.loc[(AuthorInfo['ISEmail']=='Yes'),['pmid','name','affiliation']] # Corresponding author  
+	add_bha['name']='; '+add_bha['name']
+	add_coa['name']='; '+add_coa['name']
+
+	d2=add_bha.groupby('pmid', as_index=False).agg(sum)[['pmid','name']].rename(columns={'name':'biohub author'})
+	d3=add_coa.groupby('pmid', as_index=False).agg(sum)[['pmid','name','affiliation']].rename(columns={'name':'corresponding author','affiliation':'corresponding author institution'}) 
+
+	f = lambda arr: '; '.join(np.unique(arr))
+	d4=AuthorInfo.groupby('pmid')['affiliation'].agg([f]).reset_index().rename(columns={'<lambda>':'affiliations list'})
+
+	AuthorInfo['author - affiliations']=AuthorInfo['name']+': '+AuthorInfo['affiliation']
+	d5=AuthorInfo.groupby('pmid', as_index=False)['author - affiliations'].agg(sum)
+
+	Articlesinfo=pd.merge(Articlesinfo,d2,how='left',on=['pmid'])
+	Articlesinfo=pd.merge(Articlesinfo,d3,how='left',on=['pmid'])
+	Articlesinfo=pd.merge(Articlesinfo,d4,how='left',on=['pmid'])
+	Articlesinfo=pd.merge(Articlesinfo,d5,how='left',on=['pmid'])
+
+	# check if preprint in biorxiv & medrixv. Didn't find method to check arxiv preprint yet.
+	for row_number,doi in enumerate(Articlesinfo.doi):
+		for server in ['biorxiv','medrxiv']:
+			pub_api='https://api.biorxiv.org/pubs/'+server+'/'+doi
+			data=requests.get(url=pub_api).json()['collection']
+			if data !=[]:
+				Articlesinfo.loc[row_number,'confirm preprint doi']=data[-1]['preprint_doi']
+				break
+			else:
+				continue
+
+	AuthorInfo['ORCID'] = AuthorInfo['ORCID'].apply(ORCID_format)
+	
 	if save_AuthorInfo==True:
-		
-		for ind,i in enumerate(AuthorInfo['affiliation']):
-			if '@' in i:
-				AuthorInfo.loc[ind,'ISEmail']='Yes'
-			else:
-				AuthorInfo.loc[ind,'ISEmail']=''
-			
-			if ('Biohub' or 'BioHub' or 'biohub' or 'BIOHUB') in i:
-				AuthorInfo.loc[ind,'ISBiohub author']='Yes'
-			else:
-				AuthorInfo.loc[ind,'ISBiohub author']=''
-
-
-		# apply standard author name.
-		# extract biohub author for each pmid. put them into right field
-		add_bha=AuthorInfo.loc[(AuthorInfo['ISBiohub author']=='Yes'),['pmid','name','affiliation']]  # biohub author  
-		add_coa=AuthorInfo.loc[(AuthorInfo['ISEmail']=='Yes'),['pmid','name','affiliation']] # Corresponding author  
-
-		d2=add_bha.groupby('pmid', as_index=False).agg(sum)[['pmid','name']].rename(columns={'name':'biohub author'})
-		d3=add_coa.groupby('pmid', as_index=False).agg(sum)[['pmid','name','affiliation']].rename(columns={'name':'corresponding author','affiliation':'corresponding author institution'}) 
-
-		f = lambda arr: ';'.join(np.unique(arr))
-		d4=AuthorInfo.groupby('pmid')['affiliation'].agg([f]).reset_index().rename(columns={'<lambda>':'affiliations list'})
-
-		AuthorInfo['author - affiliations']=AuthorInfo['name']+': '+AuthorInfo['affiliation']
-		d5=AuthorInfo.groupby('pmid', as_index=False)['author - affiliations'].agg(sum)
-
-		#d2['pmid']=d2['pmid'].astype(str)
-		#d3['pmid']=d3['pmid'].astype(str)
-		#d4['pmid']=d4['pmid'].astype(str)
-
-		Articlesinfo=pd.merge(Articlesinfo,d2,how='left',on=['pmid'])
-		Articlesinfo=pd.merge(Articlesinfo,d3,how='left',on=['pmid'])
-		Articlesinfo=pd.merge(Articlesinfo,d4,how='left',on=['pmid'])
-		Articlesinfo=pd.merge(Articlesinfo,d5,how='left',on=['pmid'])
-
-		# check if preprint in biorxiv & medrixv. Didn't find method to check arxiv preprint yet.
-		for row_number,doi in enumerate(Articlesinfo.doi):
-			for server in ['biorxiv','medrxiv']:
-				pub_api='https://api.biorxiv.org/pubs/'+server+'/'+doi
-				data=requests.get(url=pub_api).json()['collection']
-				if data !=[]:
-					Articlesinfo.loc[row_number,'confirm preprint doi']=data[-1]['preprint_doi']
-					break
-				else:
-					continue
-		
 		#AuthorInfo.to_csv('database/pubmed api author.csv',index=False, encoding='utf-8-sig')
 		AuthorInfo.drop('author - affiliations',axis=1).to_csv('database/pubmed api author.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 	
  	#Articlesinfo.to_csv('pubmed api.csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 	print('Pubmed: Fetched '+Count+' records in {:.1f} seconds.'.format(time.time() - overall_time))
 	
+	Articlesinfo.fillna('',inplace=True)
+	Articlesinfo['biohub author']=Articlesinfo['biohub author'].str.strip('; ')
+	Articlesinfo['corresponding author']=Articlesinfo['corresponding author'].str.strip('; ')
 	return Articlesinfo
 
 # search daily pubmed author
@@ -468,17 +473,12 @@ def Pubmed_search_author(start_date,end_date):
 
     for term in author_list:
         try:
-            dt=Pubmed_search2(start_date, end_date,TERM=term,save_AuthorInfo=False)
+            dt=Pubmed_search2(start_date, end_date,TERM=term,save_AuthorInfo=True)
             dt['biohub author']=term.replace('[FAU]','')
             if isinstance(dt, pd.DataFrame):
                 df=pd.concat([df,dt],ignore_index=True)
         except:
             pass
-
-    m=list(df.columns)
-    m.remove('biohub author')
-    df=df.groupby(m)['biohub author'].apply('; '.join).reset_index()      #df2.groupby('pmid', as_index=False).agg(sum)
-    #df=df.drop_duplicates(subset='pmid', keep="last") # Q: how to drop duplicates then combine 'biohub author column?'
     return df
 
 #### 4.1: mathch author with external file Based on bill function idea.
@@ -545,8 +545,7 @@ def authormatch_pre(df):
             # FI-NMI  # firstname[0] lastname  & lastname firstname[0]
             for result in permutations([test.loc[ind,'First Name'][0],test.loc[ind,'Last Name']], 2):
                 combines_1.append(" ".join(result))
-            
-            
+
             if (test.loc[ind,'Nickname'] != test.loc[ind,'First Name']):
                 # NN-NMI
                 for result in permutations([test.loc[ind,'Nickname'],test.loc[ind,'Last Name']], 2):
@@ -554,9 +553,7 @@ def authormatch_pre(df):
                     
                 # for result in permutations([test.loc[ind,'Nickname'],test.loc[ind,'Last Name'][0]], 2):
                 #     combines.append(" ".join(result))
-                
-               
-                        
+            
         else:
             # FN 
             for result in permutations(test.iloc[ind,1:3], 2):
@@ -625,7 +622,7 @@ def authormatch_pre(df):
                     yes_name_list.append(x)
                     
         df.loc[ind,'possible biohub author']='; '.join(maybe_name_list)
-        df.loc[ind,'biohub author']='; '.join(yes_name_list)
+        df.loc[ind,'format biohub author']='; '.join(yes_name_list)
 
     return df
 
@@ -635,7 +632,7 @@ def authormatch_pre(df):
 # pubmed
 def authormatch_pub(df):
     authors=pd.read_csv('database/pubmed api author.csv', encoding='utf-8-sig')
- 
+    
     condition = set() # for scoring Biohub authors
 
     Email_address_found = set()
@@ -897,14 +894,44 @@ def authormatch_pub(df):
     authors.to_csv('database/pubmed api author.csv',index=False, encoding='utf-8-sig')		      
     
     # save them to dataframe.
-    for ind,i in enumerate(authors['pmid']):
-        if authors.loc[ind,'TrustMatch']=='Yes':
-            if authors.loc[ind,'MatchName'] not in df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'biohub author'].str.lower().replace(', ',' '):
-                df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'biohub author'] += ', '+authors.loc[ind,'MatchName']
-        elif authors.loc[ind,'TrustMatch']=='Maybe':
-            df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'possible biohub author'] += ', '+authors.loc[ind,'MatchName']
+    df['format biohub author']=''
+    df.pmid = pd.to_numeric(df.pmid, errors='coerce')
+    authors.fillna('',inplace=True)
+    authors=authors[ authors['pmid'].isin(list(df['pmid'].astype('Int64')))] 
     
+    #return authors
+    for ind in authors['pmid'].index:
+        if authors.loc[ind,'TrustMatch']=='Yes':
+            #if authors.loc[ind,'MatchName'] not in df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'biohub author'].str.lower().replace(', ',' '):
+            df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'format biohub author'] += '; '+authors.loc[ind,'MatchName']
+        if authors.loc[ind,'TrustMatch']=='Maybe':
+            df.loc[df[df['pmid']==authors.loc[ind,'pmid']].index,'possible biohub author'] += '; '+authors.loc[ind,'MatchName']
+
+    df['format biohub author']=df['format biohub author'].str.strip('; ')
     return df
+
+## author match. for single name input
+# return old_name, format_name,possible percent
+def authormatch(name):
+    test=pd.read_csv('database/biohub author combination.csv', encoding='utf-8-sig')
+    degree='no'
+    format_name=re.sub(r'[^\w]', ' ', name.strip('#'))
+    format_name=format_name.replace('  ',' ').strip(' ').replace('-','').lower()
+    
+    if name=='':
+        return name,format_name,degree
+    for ind2 in test.index:
+        if format_name in test.loc[ind2,'combination_23']:
+            format_name=test.loc[ind2,'MatchName']
+            degree='yes'
+            return name,format_name,degree
+        
+        if format_name in test.loc[ind2,'combination_01']:
+            format_name=test.loc[ind2,'MatchName']
+            degree='maybe'
+            return name,format_name,degree
+        
+    return name,name,degree
 
 
 ## 5: combine above  
@@ -926,12 +953,10 @@ def Bibliometrics_Collect(start,
 	df3 = Pubmed_search2(start_date=start, end_date=end,TERM='(zuckerb* AND biohub) OR "cz biohub" OR "czi biohub"',save_AuthorInfo=True)
 	df4 = Pubmed_search_author(start_date=end,end_date=end)
 
-	df = pd.concat([df1, df2, df3,df4])
+	df34=pd.concat([df3,df4])
+	df34=df34.drop_duplicates(subset='doi', keep="last")
+	df = pd.concat([df1, df2, df34])
  
-	try:
-		df=df.drop_duplicates(subset='pmid', keep="last")
-	except:
-		pass
 	df['record change number'] = 0
 
 	try:
@@ -949,7 +974,7 @@ def Bibliometrics_Collect(start,
 	#df['save datetime'] = datetime.datetime.now().strftime('%m/%d/%Y') # when we save it
 
 	df.insert(0, 'record id', np.arange(1, len(df)+1))
-	order = ['record id', 'save datetime', 'biohub author','possible biohub author','corresponding author','corresponding author institution',
+	order = ['record id', 'save datetime', 'biohub author','possible biohub author','format biohub author','corresponding author','corresponding author institution',
 			'journal', 'doi', 'pmid',
    		'title','url','abstract', 'keyword',  'pdf url', 'version',  'version number', 'type', 
       		'date','epost date', 'publish date',

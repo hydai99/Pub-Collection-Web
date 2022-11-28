@@ -41,10 +41,10 @@ fstart = datetime.datetime.strptime(
 base_check = base[(base['save datetime'] >= fstart)] #date?
 
 ### delete db
-compy = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
-deletedb_0 = compy.df1_unq_rows
-deletedb=base.loc[base['doi'].isin(deletedb_0['doi'])]
-base = base.drop(index=deletedb.index)  # start after enough dataset.
+# compy = datacompy.Compare(base_check.iloc[:,2:-3], new.iloc[:,2:-3], join_columns=['doi'])
+# deletedb_0 = compy.df1_unq_rows
+# deletedb=base.loc[base['doi'].isin(deletedb_0['doi'])]
+# base = base.drop(index=deletedb.index)  # start after enough dataset.
 
 ### changedb: Store new / old versions of modified records
 compy1=datacompy.Compare(base_check.iloc[:,2:-1], new.iloc[:,2:-1], join_columns=['doi'])
@@ -64,6 +64,7 @@ changedb_new['record change number'] += 1
 
 # totally new rcord (first time occur)
 completelynewdb = new.loc[-new.doi.isin(base.doi)]
+
 completelynewdb.loc[:, 'record id'] = range(
     int(max(base['record id'])+1), int(max(base['record id']) + len(completelynewdb)+1))
 
@@ -120,4 +121,4 @@ pub_pre=base[base.replace('', np.NaN)[['confirm preprint doi','confirm published
 pub_pre.to_csv('database/matched pub-preprint.csv',index=False, encoding='utf-8-sig')
 changedb_old.to_csv('database/changedb (old version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
 changedb_new.to_csv('database/changedb (new version).csv', mode='a', index=False, header=False, encoding='utf-8-sig')
-deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
+#deletedb.to_csv('database/deletedb.csv', mode='a', index=False,header=False, encoding='utf-8-sig')
