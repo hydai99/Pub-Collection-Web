@@ -12,5 +12,5 @@ pillow
 lxml
 jellyfish
 python_docx>=0.8.11
-xlrd >= 1.0.0
 docx==0.2.4
+openpyxl
