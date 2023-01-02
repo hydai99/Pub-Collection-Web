@@ -29,6 +29,7 @@ else:
     new = af.Bibliometrics_Collect(start)
 
 new=af.transfer_date_format(new)
+new['pmid']=new['pmid'].astype(object)
 base=af.transfer_date_format(base)
 
 ######################### update database
