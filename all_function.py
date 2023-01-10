@@ -219,7 +219,8 @@ def Arxiv_Search(start_date,keyword):
 		for article in articles:
 			ori_date= article.find('span', attrs={'class': 'age'}).text.replace('; Indexed ','')  # format: 'Apr 9, 2022'
 			ori_date= datetime.datetime.strptime(ori_date, '%b %d, %Y').strftime('%m/%d/%Y')
-			if ori_date < start_date:  #search page1 nearest date
+			if time.strptime(ori_date, '%m/%d/%Y') < time.strptime(start_date, '%m/%d/%Y'):
+       		#if ori_date < start_date:  #search page1 nearest date
 				stop='Yes'
 				break
 
