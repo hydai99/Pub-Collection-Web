@@ -2,8 +2,8 @@ name: pub-daily-crawl
 on:
   schedule:
     - cron: "30 6 * * *" #eg 6:30 AM UTC today = 23:30 PST yesterday
-  #push:
-  #  branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   build:
